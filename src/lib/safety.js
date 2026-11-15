@@ -13,6 +13,16 @@ const sentTimes = [];               // أوقات آخر الرسائل (للح�
 const threadNext = new Map();       // threadID -> أقرب وقت مسموح
 const lastText = new Map();         // threadID -> {t, at}
 const actionTimes = [];
+let typerApi = null;                // يُربط من index.js بعد تسجيل الدخول
+const bindApi = api => { typerApi = api; };
+// «يكتب...»: توقيع fca-eryxenx هو sendTypingIndicator(threadID, isTyping, options, callback) ويعيد Promise
+function typing(thread, on, ms) {
+    try {
+        if (!typerApi || typeof typerApi.sendTypingIndicator !== "function") return;
+        const r = typerApi.sendTypingIndicator(String(thread), !!on, on ? { duration: (ms || 3000) + 1500 } : {}, () => {});
+        if (r && typeof r.catch === "function") r.catch(() => {});
+    } catch (e) { /* لا شيء */ }
+}
 const queue = [];
 let running = false;
 
@@ -46,7 +56,14 @@ function schedule(thread, text, fn, typingMs) {
         if (lastText.size > 2000) lastText.delete(lastText.keys().next().value);
     }
     return new Promise(resolve => {
-        queue.push({ thread: key, resolve, fn: async () => { if (typingMs > 0) await sleep(typingMs); return fn(); } });
+        queue.push({ thread: key, resolve, fn: async () => {
+            if (typingMs > 0) { // إظهار «يكتب...» فعليًا طوال مدة الانتظار ثم إيقافه قبل الإرسال
+                typing(key, true, typingMs);
+                await sleep(typingMs);
+                typing(key, false);
+            }
+            return fn();
+        } });
         pump();
     });
 }
@@ -62,4 +79,4 @@ function allowAction() {
     return true;
 }
 
-module.exports = { schedule, typingDelay, allowAction, sleep, FAST };
+module.exports = { bindApi, typing, schedule, typingDelay, allowAction, sleep, FAST };

@@ -56,6 +56,7 @@ async function main() {
     login({ appState: state }, { listenEvents: true, selfListen: false, autoMarkRead: true, online: true }, (err, api) => {
         if (err) { console.error("فشل تسجيل الدخول:", err.error || err.message || err); process.exit(1); }
         console.log("[آيلا] تم الدخول. المعرّف: " + api.getCurrentUserID());
+        require("./src/lib/safety").bindApi(api); // لإظهار «يكتب...» قبل كل رسالة
         try { api.sessionGuard(path.resolve(cfg.appStatePath), { interval: 3 * 60 * 1000, debounce: 30 * 1000 }); } catch (e) { /* اختياري */ }
 
         const saveState = () => { try { const s = api.getAppState(); if (Array.isArray(s) && s.length) store.set("appstate", { state: s, srcHash: hash, at: Date.now() }); } catch (e) { /* لا شيء */ } };

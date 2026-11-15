@@ -74,7 +74,7 @@ module.exports = {
         if (!safety.FAST && Date.now() - (last.get(sid) || 0) < COOLDOWN) return true;
         last.set(sid, Date.now()); if (last.size > 5000) last.clear();
         busy.add(sid);
-        try { api.sendTypingIndicator(threadID, () => {}); } catch (e) { /* لا شيء */ }
+        safety.typing(threadID, true, 8000); // يظهر «يكتب...» أثناء انتظار رد الذكاء
         try {
             const name = await nm();
             const g = await guessGender(api, sid);

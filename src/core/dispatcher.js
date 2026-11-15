@@ -103,7 +103,6 @@ async function handleMessage(api, event) {
     cool.set(key, now);
     if (cool.size > 5000) cool.clear();
 
-    try { api.sendTypingIndicator(threadID, () => {}); } catch (e) { /* لا شيء */ }
     try { await cmd.run(ctx); }
     catch (e) {
         console.error("[cmd " + cmd.name + "]", e && (e.stack || e.message));
