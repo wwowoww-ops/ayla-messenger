@@ -41,7 +41,7 @@ async function crashLoopGuard() {
 
 async function main() {
     const source = readSource();
-    if (!source) { console.error("لا يوجد appstate. ضع الملف appstate.json أو المتغير APPSTATE."); process.exit(1); }
+    if (!source || (Array.isArray(source) && !source.length)) { console.error("appstate غير موجود أو فارغ. ضع الكوكيز في المتغير APPSTATE (الأفضل) أو في الملف appstate.json."); process.exit(1); }
     if (!cfg.owners.length) console.warn("[تنبيه] لم تُحدَّد معرّفات المطوّرين (owners)، فلن تعمل أوامر المطوّر.");
     if (!cfg.aiKey) console.warn("[تنبيه] لا يوجد aiKey، فآيلا الذكية معطّلة.");
 
