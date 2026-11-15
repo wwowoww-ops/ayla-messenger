@@ -27,7 +27,9 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     };
     let mid = 0, fails = 0, pass = 0;
     const ok = (c, name) => { if (c) pass++; else { fails++; console.log("✗ فشل:", name); } };
-    const msg = async (sender, body, extra) => { out = []; calls = []; const e = Object.assign({ type: "message", senderID: sender, threadID: "G1", isGroup: true, messageID: "m" + (++mid), body, mentions: {}, attachments: [] }, extra || {}); dispatch(api, e); await new Promise(r => setTimeout(r, 60)); return out; };
+    // ننتظر حتى يستقر الخرج (ردود الذكاء تمر عبر HTTP محلي فقد تتأخر قليلًا)
+    const settle = async () => { let n = -1, stable = 0; for (let i = 0; i < 40 && stable < 3; i++) { await new Promise(r => setTimeout(r, 25)); if (out.length === n) stable++; else { stable = 0; n = out.length; } } };
+    const msg = async (sender, body, extra) => { out = []; calls = []; const e = Object.assign({ type: "message", senderID: sender, threadID: "G1", isGroup: true, messageID: "m" + (++mid), body, mentions: {}, attachments: [] }, extra || {}); dispatch(api, e); await settle(); return out; };
     const tx = o => o.map(x => typeof x.m === "string" ? x.m : x.m.body).join(" | ");
 
     // ---- المنشن بكل أشكاله ----
@@ -98,6 +100,24 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     const parts = aiCalls[aiCalls.length - 1].body.messages.slice(-1)[0].parts; ok(parts.some(p => p.image_url && /^data:image\/jpeg;base64,/.test(p.image_url.url)), "الصورة تُرسل للمزوّد بصيغة image_url"); imgSrv.close();
     // أوامر المطوّر
     o = await msg("900", ".اذاعة مرحبا بالجميع"); ok(/اكتملت/.test(tx(o).replace(/\|/g, "")) || out.length >= 3, "إذاعة المطوّر");
+
+    // ---- نووي / بانكاي / منع الخروج / التوديع ----
+    o = await msg("900", ".نووي"); ok(/تأكيد/.test(tx(o)) && !calls.length, "نووي يطلب تأكيدًا أولًا");
+    o = await msg("100", ".نووي"); ok(/للمطوّر/.test(tx(o)), "نووي للمطوّر فقط");
+    o = await msg("900", ".نووي تأكيد");
+    const kicked = calls.filter(c => c[0] === "kick").map(c => c[1]);
+    ok(kicked.includes("100") && kicked.includes("200") && kicked.includes("300") && !kicked.includes("900") && !kicked.includes("999"), "نووي يطرد الجميع عدا المطوّر والبوت");
+    o = await msg("100", ".بانكاي @محمد", { mentions: { 200: "@محمد" } }); ok(/بانكاي/.test(tx(o)) && calls.some(c => c[0] === "kick" && c[1] === "200"), "بانكاي: مشهد + طرد");
+    o = await msg("100", ".بانكاي @ابو", { mentions: { 900: "@ابو" } }); ok(!calls.some(c => c[0] === "kick"), "بانكاي لا يطرد المطوّر");
+    const addCalls = []; api.addUserToGroup = (u, t, cb) => { addCalls.push(u); cb && cb(); };
+    const leaveEv = (author, left) => { out = []; dispatch(api, { type: "event", logMessageType: "log:unsubscribe", threadID: "G9", isGroup: true, author, logMessageData: { leftParticipantFbId: left } }); return new Promise(r => setTimeout(() => r(out), 80)); };
+    o = await leaveEv("200", "200"); ok(/غادر/.test(tx(o)) && !addCalls.length, "توديع عند الخروج (منع الخروج متوقف افتراضيًا)");
+    o = await leaveEv("100", "200"); ok(/خرج من المجموعة/.test(tx(o)), "توديع مختلف عند الطرد");
+    await msg("100", ".منع_الخروج تشغيل", { threadID: "G9" });
+    o = await leaveEv("200", "200"); ok(addCalls.includes("200") && /رجّعنا/.test(tx(o)), "منع الخروج يعيد من خرج بنفسه");
+    o = await leaveEv("100", "200"); ok(addCalls.length === 1, "منع الخروج لا يعيد من طُرد");
+    await msg("100", ".توديع ايقاف", { threadID: "G9" }); await msg("100", ".منع_الخروج ايقاف", { threadID: "G9" });
+    o = await leaveEv("200", "200"); ok(o.length === 0, "توديع موقوف يصمت");
     // ---- الأمان: طابور بإيقاع ----
     delete process.env.AYLA_TEST;
     console.log(pass + " نجح، " + fails + " فشل");
