@@ -1,6 +1,6 @@
 // أوامر الصور: فردية (صورتك أو صورة المستهدف) وثنائية (أنت + المستهدف). القوالب في src/lib/cards.js
 const img = require("../../lib/img");
-const { single, dual } = require("../../lib/cards");
+const { single, dual, zawjiniCard } = require("../../lib/cards");
 const { pick, hash } = require("../../lib/util");
 
 async function who(ctx) { // المستهدف إن وُجد وإلا المرسل نفسه
@@ -15,7 +15,7 @@ const mk = (name, aliases, key, caption, opts) => ({
     async run(ctx) {
         const t = await who(ctx);
         const av = await img.avatar(ctx.api, t.id, t.name, 512);
-        const buf = await single[key]([av], opts);
+        const buf = await single[key]([av], Object.assign({ uid: t.id }, opts));
         const m = ctx.mention([caption + " ", { id: t.id, name: t.name }]);
         return img.sendImage(ctx.api, buf, m.body, ctx.event.threadID, ctx.event.messageID, m.mentions);
     }
@@ -66,7 +66,7 @@ const zawjini = {
         ctx.store.set("marry:" + pid, { spouse: me, name: myName, at });
         const [a, b] = await Promise.all([img.avatar(ctx.api, me, myName, 400), img.avatar(ctx.api, pid, pname, 400)]);
         const m = ctx.mention(["💍 زواج عشوائي! ", { id: me, name: myName }, " و ", { id: pid, name: pname }, " — نسبة الحب " + pct + "% 💖"]);
-        return img.sendImage(ctx.api, (await require("../../lib/cards").hinaCard("zawjini", [a, b])) || await dual.marry([a, b]), m.body, ctx.event.threadID, ctx.event.messageID, m.mentions);
+        return img.sendImage(ctx.api, await zawjiniCard([a, b]), m.body, ctx.event.threadID, ctx.event.messageID, m.mentions);
     }
 };
 

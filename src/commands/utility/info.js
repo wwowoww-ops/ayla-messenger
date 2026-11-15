@@ -1,5 +1,5 @@
 module.exports = {
-    name: "معلومات", aliases: ["info", "تيد"], level: 0, scope: "group", cooldown: 10,
+    name: "معلومات", aliases: ["info"], level: 0, scope: "group", cooldown: 10,
     description: "معلومات المجموعة", usage: "معلومات",
     async run(ctx) {
         let i;

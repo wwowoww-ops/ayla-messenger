@@ -17,6 +17,7 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     const api = {
         getCurrentUserID: () => "999",
         sendMessage: (m, t, cb, r) => { out.push({ m, t, r }); cb && cb(null, { messageID: "x" }); },
+        getThreadHistory: async (tid, n, before) => { const now = Date.now(); if (before !== undefined && before < now - 9 * 86400000) return []; if (before !== undefined) return [{ messageID: "h9", senderID: "100", body: "قديمة", timestamp: now - 10 * 86400000 }]; return [{ messageID: "h1", senderID: "100", body: "مرحبا", timestamp: now - 1000 }, { messageID: "h2", senderID: "200", body: "", attachments: [{ type: "photo" }], timestamp: now - 2000 }, { messageID: "h3", senderID: "100", body: "تاني", timestamp: now - 3000 }, { messageID: "h4", senderID: "100", body: "أمس", timestamp: now - 30 * 3600000 }]; },
         getThreadInfo: async () => ({ adminIDs: [{ id: "900" }, { id: "999" }, { id: "100" }], participantIDs: Object.keys(people), threadName: "اختبار", userInfo: Object.entries(people).map(([id, name]) => ({ id, name })) }),
         getUserInfo: async id => ({ [id]: { name: people[id] || "مجهول", gender: id === "100" || id === "300" ? 1 : 2 } }),
         removeUserFromGroup: (u, t, cb) => { calls.push(["kick", u]); cb && cb(); },
@@ -61,7 +62,10 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     await msg("100", ".طلاق");
     o = await msg("200", ".خمن"); ok(/فكّرت/.test(tx(o)), "خمن تبدأ"); o = await msg("200", ".خمن 50"); ok(/أكبر|أصغر|خمّن/.test(tx(o)), "خمن تلميح");
     o = await msg("200", ".قول مرحبا"); ok(/مرحبا/.test(tx(o)) && calls.some(c => c[0] === "unsend"), "قول + محاولة حذف");
-    o = await msg("200", ".توافق @ليلى", { mentions: { 300: "@ليلى" } }); ok(/%/.test(tx(o)), "توافق");
+    o = await img("200", ".توافق"); ok(o[0] && o[0].m.attachment && /%/.test(tx(o)) && o[0].m.mentions.length === 2, "توافق بصورة لاثنين عشوائيين");
+    o = await msg("200", ".تيد"); ok(/𝗔𝗬𝗟𝗔/.test(tx(o)) && /عدد الأعضاء: 5/.test(tx(o)) && !/HINA/i.test(tx(o)), "تيد بهيدر AYLA");
+    o = await msg("200", ".احصائيات"); ok(/𝗔𝗬𝗟𝗔 • الأدوات/.test(tx(o)) && /💬 الرسائل النصية:\n2\n/.test(tx(o)) && /🖼️ الصور المرسلة:\n1\n/.test(tx(o)), "احصائيات: عدّ نص/صور اليوم فقط");
+    o = await msg("200", ".ايام"); ok(/آخر 7 أيام/.test(tx(o)) && /𝗔𝗬𝗟𝗔 • الأدوات/.test(tx(o)) && /💬 الرسائل النصية:\n3\n/.test(tx(o)) && /كامل فترة الـ7 أيام/.test(tx(o)), "ايام: 7 أيام مكتملة");
     o = await msg("200", ".اوامر"); ok(/الإدارة/.test(tx(o)) === false && /تسلية/.test(tx(o)), "قائمة الأوامر تخفي أوامر الإدارة عن العضو");
     o = await msg("100", ".اوامر"); ok(/الإدارة/.test(tx(o)) && !/المطوّر/.test(tx(o)), "الأدمن يرى الإدارة لا المطوّر");
     o = await msg("900", ".اوامر"); ok(/المطوّر/.test(tx(o)), "المطوّر يرى كل شيء");

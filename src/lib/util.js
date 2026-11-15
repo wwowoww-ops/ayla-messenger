@@ -52,4 +52,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const hash = s => { let h = 2166136261; for (const c of String(s)) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; } return h; };
 
-module.exports = { norm, lev, send, withMentions, sleep, pick, hash };
+const HEADER = "⌬ ━━ 𝗔𝗬𝗟𝗔 ━━ ⌬";
+const UHEADER = "⌬ ━━ 𝗔𝗬𝗟𝗔 • الأدوات ━━ ⌬";
+
+module.exports = {
+    HEADER, UHEADER, norm, lev, send, withMentions, sleep, pick, hash };
