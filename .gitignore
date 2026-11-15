@@ -1,5 +1,4 @@
 node_modules
-appstate.json
 account.json
 *.bak
 .nexca/
