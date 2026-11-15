@@ -7,6 +7,7 @@ const loader = require("./loader");
 const { norm, lev, send, withMentions } = require("../lib/util");
 const T = require("../lib/target");
 const safety = require("../lib/safety");
+const ui = require("../lib/ui");
 
 const seen = new Set();                 // منع معالجة نفس الرسالة مرتين
 const cool = new Map();                 // userId:cmd -> وقت
@@ -20,6 +21,14 @@ function dedupe(id) {
     return false;
 }
 
+// إحصائيات الاستعمال لأمر ابتايم
+function track(threadID, sid) {
+    const st = store.get("stats", null) || { cmds: 0, threads: {}, users: {} };
+    st.cmds++;
+    st.threads[threadID] = 1;
+    st.users[sid] = 1;
+    store.set("stats", st);
+}
 function makeCtx(api, event, extra) {
     const threadID = String(event.threadID);
     const ctx = Object.assign({
@@ -85,16 +94,22 @@ async function handleMessage(api, event) {
         }
         if (prefixed && name) {
             const best = [...loader.commands.keys()].map(k => [k, lev(k, norm(name))]).sort((a, b) => a[1] - b[1])[0];
-            if (best && best[1] <= Math.max(1, Math.floor(norm(name).length / 3))) ctx.reply("ما لقيت أمر «" + name + "». قصدك «" + loader.commands.get(best[0]).name + "»؟");
+            if (best && best[1] <= Math.max(1, Math.floor(norm(name).length / 3))) ctx.reply(ui.withHeader("❓ أمر غير معروف: «" + name + "»\n↳ هل تقصد: «" + loader.commands.get(best[0]).name + "»؟\n↳ اكتب " + prefix + "اوامر لعرض كل الأوامر.", "default"));
         }
         return;
     }
 
-    if (cmd.scope === "group" && !event.isGroup) return ctx.reply("هذا الأمر للمجموعات فقط.");
-    if (cmd.scope === "private" && event.isGroup) return ctx.reply("هذا الأمر للخاص فقط.");
+    // هيدر لكل رد من أي أمر + إحصائيات الاستعمال
+    const cat = cmd.category;
+    ctx.send = (m, to) => send(api, ui.withHeader(m, cat), to || threadID);
+    ctx.reply = m => send(api, ui.withHeader(m, cat), threadID, event.messageID);
+    ctx.hdr = m => ui.withHeader(m, cat);
+
+    if (cmd.scope === "group" && !event.isGroup) return ctx.reply("👥 هذا الأمر يعمل داخل المجموعات فقط.");
+    if (cmd.scope === "private" && event.isGroup) return ctx.reply("💬 هذا الأمر يعمل في المحادثة الخاصة فقط.");
 
     ctx.level = ctx.level || (cmd.level > 0 || owner ? await perms.levelOf(api, event) : 0);
-    if (cmd.level > ctx.level) return ctx.reply(cmd.level === 2 ? "هذا الأمر للمطوّر فقط." : "هذا الأمر لأدمن المجموعة فقط.");
+    if (cmd.level > ctx.level) return ctx.reply(cmd.level === 2 ? "🔐 هذا الأمر مخصّص للمطوّر فقط." : "🛡️ هذا الأمر مخصّص لأدمن المجموعة فقط.");
 
     // تبريد
     const key = sid + ":" + cmd.name;
@@ -103,10 +118,10 @@ async function handleMessage(api, event) {
     cool.set(key, now);
     if (cool.size > 5000) cool.clear();
 
-    try { await cmd.run(ctx); }
+    try { track(threadID, sid); await cmd.run(ctx); }
     catch (e) {
         console.error("[cmd " + cmd.name + "]", e && (e.stack || e.message));
-        ctx.reply("صار خطأ بسيط في تنفيذ الأمر، جرّب بعد قليل 🌸");
+        ctx.reply("⚠️ حدث خطأ أثناء تنفيذ الأمر «" + cmd.name + "»\n↳ حاول مرة أخرى بعد قليل، وإن تكرر أخبر المطوّر.");
     }
 }
 
@@ -114,7 +129,7 @@ async function handleEventType(api, event) {
     const type = event.logMessageType || event.type;
     for (const m of loader.events) {
         if (!m.types.includes(type)) continue;
-        try { await m.onEvent(makeCtx(api, event), event); }
+        try { const c = makeCtx(api, event); c.send = (msg, to) => send(api, ui.withHeader(msg, m.category || "default"), to || String(event.threadID)); await m.onEvent(c, event); }
         catch (e) { console.error("[event " + m.name + "]", e && e.message); }
     }
 }

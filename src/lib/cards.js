@@ -94,18 +94,18 @@ async function template(key) {
         await sharp(b).metadata();
         try { fs.mkdirSync(CACHE, { recursive: true }); fs.writeFileSync(f, b); } catch (e) { /* التخزين اختياري */ }
         return b;
-    } catch (e) { return null; }
+    } catch (e) { console.error("[قالب] تعذّر تحميل قالب «" + key + "» (" + U[key] + "): " + e.message + " — سأستعمل التصميم الاحتياطي"); return null; }
 }
 const upload = k => { const p = path.join(__dirname, "..", "..", "assets", "templates", k + ".png"); return fs.existsSync(p) ? fs.readFileSync(p) : null; };
 
-async function onTemplate(key, a) { // خلفية + دوائر في أماكنها
+async function onTemplate(key, a, over) { // خلفية + دوائر في أماكنها
     const spec = SLOTS[key]; if (!spec) return null;
     let base = upload(key) || await template(key); if (!base) return null;
     let png = sharp(base);
     if (spec.canvas) png = png.resize(spec.canvas[0], spec.canvas[1], { fit: "fill" });
     const buf = await png.png().toBuffer(), m = await sharp(buf).metadata();
     return card(m.width, m.height, `<image href="data:image/png;base64,${buf.toString("base64")}" width="${m.width}" height="${m.height}"/>`,
-        spec.slots.map((sl, i) => ({ buf: a[i], size: sl.s, x: sl.x + sl.s / 2, y: sl.y + sl.s / 2 })), "");
+        spec.slots.map((sl, i) => ({ buf: a[i], size: sl.s, x: sl.x + sl.s / 2, y: sl.y + sl.s / 2 })), over || "");
 }
 async function grave(a) { // قبر Hina: خلفية 500×670 والصورة 160 عند (160,70) مع كتابة RIP
     const base = upload("grave") || await template("grave"); if (!base) return null;
@@ -145,5 +145,11 @@ const dual2 = Object.assign({}, classic.dual, {
     kiss: tryFirst(a => onTemplate("kiss", a), classic.dual.kiss),
     slap: tryFirst(async a => { const b = upload("slap"); return b ? card(1000, 600, `<image href="data:image/png;base64,${(await sharp(b).resize(1000, 600, { fit: "cover" }).png().toBuffer()).toString("base64")}" width="1000" height="600"/>`, [{ buf: a[0], size: 300, x: 250, y: 330 }, { buf: a[1], size: 300, x: 750, y: 330 }], "") : null; }, classic.dual.slap)
 });
-const zawjiniCard = tryFirst(a => onTemplate("zawjini", a), a => neon.marry(a));
+// زوجيني: النسبة تُطبع في منتصف القلب (425,239) مثل Hina
+async function zawjiniCard(a, pct) {
+    const txt = `<text x="425" y="250" text-anchor="middle" font-family="${F}" font-size="38" font-weight="bold" fill="#fff" stroke="#000" stroke-width="1.2" stroke-opacity=".5">${pct}%</text>`;
+    let r = null;
+    try { r = await onTemplate("zawjini", a, txt); } catch (e) { r = null; }
+    return r || neon.marry(a, pct);
+}
 module.exports = { single: single2, dual: dual2, zawjiniCard, compat: neon.compat };

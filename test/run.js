@@ -49,15 +49,16 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     // أوامر الصور أبطأ (جلب صورة + رسم): ننتظر ظهور الرسالة
     const img = async (sender, body, extra) => { out = []; calls = []; const e = Object.assign({ type: "message", senderID: sender, threadID: "G1", isGroup: true, messageID: "m" + (++mid), body, mentions: {}, attachments: [] }, extra || {}); dispatch(api, e); for (let i = 0; i < 200 && !out.length; i++) await new Promise(r => setTimeout(r, 50)); return out; };
     let o = await img("200", ".زواج @ليلى", { mentions: { 300: "@ليلى" } });
-    ok(/يتزوج/.test(tx(o)) && o[0].m.mentions.length === 2 && o[0].m.attachment && typeof o[0].m.attachment.pipe === "function", "زواج: صورة مرفقة + وسوم المنشن");
+    ok(/طلب زواج/.test(tx(o)) && o[0].m.mentions.length === 2 && o[0].m.attachment && typeof o[0].m.attachment.pipe === "function", "زواج: صورة مرفقة + وسوم المنشن");
     o = await msg("200", ".زواج @ليلى", { mentions: { 300: "@ليلى" } }); ok(/متزوج/.test(tx(o)), "منع زواج مكرر");
     o = await msg("200", ".زوجي"); ok(/ليلى/.test(tx(o)), "زوجي");
     o = await msg("200", ".طلاق"); ok(/الطلاق/.test(tx(o)), "طلاق");
-    o = await img("200", ".حضن @ليلى", { mentions: { 300: "@ليلى" } }); ok(/يحتضن/.test(tx(o)) && o[0].m.attachment, "حضن بصورة");
+    ok(o[0].m.mentions.every(x => o[0].m.body.substr(x.fromIndex, x.tag.length) === x.tag) && /^⌬/.test(o[0].m.body), "مواضع المنشن صحيحة بعد إضافة الهيدر");
+    o = await img("200", ".حضن @ليلى", { mentions: { 300: "@ليلى" } }); ok(/حضن دافئ/.test(tx(o)) && o[0].m.attachment, "حضن بصورة");
     for (const c of ["مطلوب", "قبر", "سجن", "شهادة", "هوية", "ملك", "ملكة", "عملة", "مجلة"]) { o = await img("200", "." + c + " @ليلى", { mentions: { 300: "@ليلى" } }); ok(o[0] && o[0].m.attachment && o[0].m.mentions.length === 1, "صورة فردية: " + c); }
     o = await img("200", ".مطلوب"); ok(o[0] && o[0].m.attachment, "فردي بلا منشن = صورتك");
     for (const c of ["بوسة", "صداقة", "مواجهة", "صفع"]) { o = await img("100", "." + c + " @محمد", { mentions: { 200: "@محمد" } }); ok(o[0] && o[0].m.attachment && o[0].m.mentions.length === 2, "صورة ثنائية: " + c); }
-    o = await img("100", ".بوسة"); ok(/مع من/.test(tx(o)), "ثنائي بلا هدف يسأل");
+    o = await img("100", ".بوسة"); ok(/حدّد الشخص/.test(tx(o)), "ثنائي بلا هدف يسأل");
     await msg("100", ".طلاق"); o = await img("100", ".زوجيني"); ok(o[0] && o[0].m.attachment && /%/.test(tx(o)), "زوجيني عشوائي بنسبة");
     await msg("100", ".طلاق");
     o = await msg("200", ".خمن"); ok(/فكّرت/.test(tx(o)), "خمن تبدأ"); o = await msg("200", ".خمن 50"); ok(/أكبر|أصغر|خمّن/.test(tx(o)), "خمن تلميح");
@@ -66,15 +67,19 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     o = await msg("200", ".تيد"); ok(/𝗔𝗬𝗟𝗔/.test(tx(o)) && /عدد الأعضاء: 5/.test(tx(o)) && !/HINA/i.test(tx(o)), "تيد بهيدر AYLA");
     o = await msg("200", ".احصائيات"); ok(/𝗔𝗬𝗟𝗔 UTILITY/.test(tx(o)) && /💬 الرسائل النصية:\n2\n/.test(tx(o)) && /🖼️ الصور المرسلة:\n1\n/.test(tx(o)), "احصائيات: عدّ نص/صور اليوم فقط");
     o = await msg("200", ".ايام"); ok(/آخر 7 أيام/.test(tx(o)) && /𝗔𝗬𝗟𝗔 UTILITY/.test(tx(o)) && /💬 الرسائل النصية:\n3\n/.test(tx(o)) && /كامل فترة الـ7 أيام/.test(tx(o)), "ايام: 7 أيام مكتملة");
-    o = await msg("200", ".اوامر"); ok(/الإدارة/.test(tx(o)) === false && /تسلية/.test(tx(o)), "قائمة الأوامر تخفي أوامر الإدارة عن العضو");
-    o = await msg("100", ".اوامر"); ok(/الإدارة/.test(tx(o)) && !/المطوّر/.test(tx(o)), "الأدمن يرى الإدارة لا المطوّر");
-    o = await msg("900", ".اوامر"); ok(/المطوّر/.test(tx(o)), "المطوّر يرى كل شيء");
+    o = await msg("200", ".اوامر"); ok(/❶/.test(tx(o)) && /❺/.test(tx(o)) && /𝗔𝗬𝗟𝗔/.test(tx(o)), "قائمة الأوامر التفاعلية بالفئات والهيدر");
+    o = await msg("200", "3", { type: "message_reply", messageReply: { messageID: "x" } }); ok(/الإدارة/.test(tx(o)) && /╘❯/.test(tx(o)) && /تحذير/.test(tx(o)), "الرد برقم الفئة يعرض أوامرها");
+    o = await msg("100", "3", { type: "message_reply", messageReply: { messageID: "x" } }); ok(/ليست قائمتك/.test(tx(o)), "قائمة غيرك مرفوضة");
+    o = await msg("200", "رجوع", { type: "message_reply", messageReply: { messageID: "x" } }); ok(/❶/.test(tx(o)), "رجوع للقائمة الرئيسية");
+    o = await msg("200", ".اوامر تحذير"); ok(/تفاصيل الأمر/.test(tx(o)) && /الصلاحية: أدمن المجموعة/.test(tx(o)), "تفاصيل أمر");
+    o = await msg("200", ".ابتايم"); ok(/مـدة الـتـشـغـيـل/.test(tx(o)) && /Heap/.test(tx(o)) && /الأوامر المستخدمة/.test(tx(o)), "ابتايم مفصّل");
+    o = await msg("200", ".صراحة"); ok(/^⌬ ━━ 𝗔𝗬𝗟𝗔 FUN ━━ ⌬/.test(tx(o)), "هيدر تلقائي لكل رد");
     // ---- صلاحيات ----
     o = await msg("200", ".طرد @ليلى", { mentions: { 300: "@ليلى" } }); ok(/لأدمن/.test(tx(o)) && !calls.length, "عضو عادي لا يطرد");
     o = await msg("100", ".طرد @ليلى", { mentions: { 300: "@ليلى" } }); ok(calls.length && calls[0][0] === "kick" && calls[0][1] === "300", "أدمن يطرد");
     o = await msg("100", ".طرد @ابو", { mentions: { 900: "@ابو" } }); ok(!calls.length, "لا يُطرد المطوّر");
     o = await msg("100", ".حظر @ليلى", { mentions: { 300: "@ليلى" } }); ok(/للمطوّر/.test(tx(o)), "حظر للمطوّر فقط");
-    o = await msg("900", ".حظر @ليلى", { mentions: { 300: "@ليلى" } }); ok(/تم حظر/.test(tx(o)), "المطوّر يحظر");
+    o = await msg("900", ".حظر @ليلى", { mentions: { 300: "@ليلى" } }); ok(/تم الحظر/.test(tx(o)), "المطوّر يحظر");
     o = await msg("300", ".اوامر"); ok(o.length === 0, "المحظور لا يُستجاب له");
     o = await msg("900", ".فك_حظر @ليلى", { mentions: { 300: "@ليلى" } }); o = await msg("300", ".ايدي"); ok(/300/.test(tx(o)), "فك الحظر");
     o = await msg("100", ".تحذير @محمد السبب", { mentions: { 200: "@محمد" } }); ok(/1\/3/.test(tx(o)), "تحذير 1");
@@ -86,7 +91,7 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     o = await msg("200", ".ايدي"); ok(!/200/.test(tx(o)), "البادئة القديمة لم تعد تعمل");
     o = await msg("100", "!بادئة ."); // رجوع
     // ---- أمر غير معروف: اقتراح ----
-    o = await msg("200", ".زوااج"); ok(/قصدك/.test(tx(o)), "اقتراح عند خطأ مطبعي");
+    o = await msg("200", ".زوااج"); ok(/هل تقصد/.test(tx(o)), "اقتراح عند خطأ مطبعي");
     // ---- تقييد ----
     o = await msg("100", ".تقييد"); o = await msg("200", ".ايدي"); ok(o.length === 0, "التقييد يصمت للعضو"); o = await msg("100", ".تقييد"); o = await msg("200", ".ايدي"); ok(/200/.test(tx(o)), "إلغاء التقييد");
     // ---- صمت ----

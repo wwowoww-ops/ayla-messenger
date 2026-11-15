@@ -3,8 +3,8 @@ module.exports = {
     description: "معلومات المجموعة", usage: "معلومات",
     async run(ctx) {
         let i;
-        try { i = await ctx.api.getThreadInfo(String(ctx.event.threadID)); } catch (e) { return ctx.reply("ما قدرت أجلب معلومات المجموعة."); }
+        try { i = await ctx.api.getThreadInfo(String(ctx.event.threadID)); } catch (e) { return ctx.reply("❌ تعذّر جلب معلومات المجموعة الآن\n↳ حاول بعد قليل."); }
         const members = (i.participantIDs || []).length;
-        return ctx.reply("📌 " + (i.threadName || "بدون اسم") + "\n👥 الأعضاء: " + members + "\n🛡️ الأدمن: " + (i.adminIDs || []).length + "\n🔖 البادئة: «" + (ctx.prefix || "بدون") + "»");
+        return ctx.reply("📌 معلومات المجموعة\n━━━━━━━━━━━━━━━━━━\n🏷️ الاسم: " + (i.threadName || "بدون اسم") + "\n🆔 المعرّف: " + ctx.event.threadID + "\n👥 الأعضاء: " + members + "\n🛡️ الأدمن: " + (i.adminIDs || []).length + "\n😀 الإيموجي: " + (i.emoji || "—") + "\n🔖 البادئة: «" + (ctx.prefix || "بدون") + "»");
     }
 };

@@ -1,22 +1,41 @@
-// قائمة الأوامر تُبنى تلقائيًا من الأوامر المحمّلة، وتعرض لكل شخص ما يحق له فقط
-const CAT = { admin: "🛡️ الإدارة", owner: "👑 المطوّر", utility: "🧰 عامة", fun: "🎭 تسلية" };
+// اوامر: قائمة تفاعلية بصورة. "اوامر" تفتح القائمة، وترد عليها برقم الفئة. "اوامر اسم_الأمر" تعرض تفاصيل أمر.
+const fs = require("fs");
+const path = require("path");
+const img = require("../../lib/img");
+const menu = require("../../lib/menu");
+const ui = require("../../lib/ui");
+const { norm } = require("../../lib/util");
+const IMAGE_URL = "https://files.catbox.moe/01t0g7.jpg"; // صورة قائمة Hina الأصلية
+const CACHE = path.join(__dirname, "..", "..", "..", "data", "tpl", "help.img");
+
+async function helpImage() {
+    try { if (fs.existsSync(CACHE)) return fs.readFileSync(CACHE); } catch (e) { /* نحمّل */ }
+    try {
+        const b = await img.fetchBuf(IMAGE_URL, 20000);
+        try { fs.mkdirSync(path.dirname(CACHE), { recursive: true }); fs.writeFileSync(CACHE, b); } catch (e) { /* اختياري */ }
+        return b;
+    } catch (e) { console.error("[اوامر] تعذّر تحميل صورة القائمة، سأرسل نصًا فقط:", e.message); return null; }
+}
+
 module.exports = {
-    name: "اوامر", aliases: ["مساعدة", "help"], level: 0, cooldown: 5,
-    description: "قائمة الأوامر", usage: "اوامر | اوامر اسم_الأمر",
+    name: "اوامر", aliases: ["مساعدة", "help", "قائمة"], level: 0, cooldown: 5,
+    description: "قائمة الأوامر التفاعلية بالصورة", usage: "اوامر | اوامر اسم_الأمر",
     async run(ctx) {
-        const lv = await ctx.perms.levelOf(ctx.api, ctx.event);
-        const p = ctx.prefix || "";
-        const q = ctx.args[0];
+        const q = ctx.args.join(" ").trim();
         if (q) {
-            const c = ctx.loader.commands.get(require("../../lib/util").norm(q));
-            if (!c || c.level > lv) return ctx.reply("ما لقيت هذا الأمر.");
-            return ctx.reply(p + c.name + "\n" + c.description + "\nالاستعمال: " + p + (c.usage || c.name) + (c.aliases.length ? "\nأسماء بديلة: " + c.aliases.join("، ") : ""));
+            const c = ctx.loader.commands.get(norm(q.replace(/^[^\p{L}\p{N}]+/u, "")));
+            if (!c) return ctx.reply("❌ ما لقيت أمرًا بهذا الاسم: «" + q + "»\n↳ اكتب " + ctx.prefix + "اوامر لعرض القائمة كاملة.");
+            const lvl = ["الجميع", "أدمن المجموعة", "المطوّر فقط"][c.level];
+            return ctx.reply(ui.lines("📖 تفاصيل الأمر", "━━━━━━━━━━━━━━━━━━", "🔹 الاسم: " + c.name, "📝 الوصف: " + (c.description || "—"),
+                "⌨️ الاستعمال: " + ctx.prefix + (c.usage || c.name), c.aliases.length ? "🔁 أسماء بديلة: " + c.aliases.join("، ") : "",
+                "🔐 الصلاحية: " + lvl, "⏱️ الانتظار بين الاستعمالين: " + c.cooldown + " ثانية", "━━━━━━━━━━━━━━━━━━", "💡 جرّبه: " + ctx.prefix + (c.usage || c.name)));
         }
-        const by = {};
-        for (const c of ctx.loader.list) if (c.level <= lv) (by[c.category] = by[c.category] || []).push(c.name);
-        let out = "🌸 أوامر آيلا (البادئة: «" + (p || "بدون") + "»)\n";
-        for (const k of Object.keys(by)) out += "\n" + (CAT[k] || k) + "\n" + by[k].join(" • ") + "\n";
-        out += "\nوتقدر تكلمني مباشرة: ناديني «آيلا» أو ردّ على رسالتي، وفي الخاص أرد على كل شيء.";
-        return ctx.reply(out);
+        const body = menu.mainMenu() + "\n\n📌 البادئة: «" + (ctx.prefix || "بدون") + "»\n💬 وتقدر تكلمني مباشرة: ناديني «آيلا» أو ردّ على رسالتي.";
+        const text = ui.head("utility") + "\n\n" + body;
+        const pic = await helpImage();
+        const info = pic ? await img.sendImage(ctx.api, pic, text, ctx.event.threadID, ctx.event.messageID) : await ctx.reply(text);
+        const id = info && (info.messageID || info.messageId);
+        if (id) require("../../events/help-menu").remember(id, ctx.event.senderID);
+        return info;
     }
 };

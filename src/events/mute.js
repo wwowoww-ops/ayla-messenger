@@ -15,7 +15,7 @@ module.exports = {
             return true;
         }
         store.set(k, n);
-        await ctx.send(ctx.mention(["🔇 ", { id: sid, name: await ctx.nameOf(sid) }, " الكلام ممنوع الآن. مخالفة ثانية = طرد."]));
+        await ctx.send(require("../lib/ui").withHeader(ctx.mention(["🔇 وضع الصمت مفعّل\n👤 ", { id: sid, name: await ctx.nameOf(sid) }, "\n⚠️ الكلام ممنوع الآن لغير الأدمن\n❗ المخالفة الثانية = طرد"]), "admin"));
         return true;
     }
 };

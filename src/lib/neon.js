@@ -13,11 +13,11 @@ const heart = (x, y, s, c) => `<text x="${x}" y="${y}" text-anchor="middle" font
 const sparks = (n, w, h, c) => { let o = ""; for (let i = 0; i < n; i++) o += `<circle cx="${(i * 197) % w}" cy="${(i * 113) % h}" r="${2 + i % 4}" fill="${c}" opacity=".7"/>`; return o; };
 
 
-function marry(a) {
+function marry(a, pct) {
     const accent = NEON.pink;
     return card(1000, 600, bg(1000, 600) + frame(10, 10, 980, 580, accent, 26) + sparks(30, 1000, 600, NEON.pink),
         [{ buf: a[0], size: 300, x: 250, y: 330, ring: 8, ringColor: accent }, { buf: a[1], size: 300, x: 750, y: 330, ring: 8, ringColor: accent }],
-        t(500, 100, "تم الزواج", 70, NEON.pink) + heart(500, 400, 130, NEON.pink) + t(500, 545, "ألف مبروك!", 42, NEON.cyan, "normal"));
+        t(500, 100, "تم الزواج", 70, NEON.pink) + heart(500, 430, 210, NEON.pink) + (pct != null ? t(500, 385, pct + "%", 42, "#fff") : "") + t(500, 545, "ألف مبروك!", 42, NEON.cyan, "normal"));
 }
 
 // لون القالب يتدرّج مع النسبة: 0% أزرق بارد ← بنفسجي ← أصفر/برتقالي ← 100% أحمر/وردي حار

@@ -5,6 +5,6 @@ module.exports = {
         const t = await ctx.target();
         const id = t ? t.id : String(ctx.event.senderID);
         const name = t ? t.name : await ctx.nameOf(id);
-        return ctx.reply(name + "\n" + id);
+        return ctx.reply("🆔 معلومات المعرّف\n👤 الاسم: " + name + "\n🔢 المعرّف: " + id);
     }
 };

@@ -4,5 +4,5 @@ const DARE = ["اكتب رسالة بصوت عالٍ بدون همزات", "غي
 module.exports = {
     name: "صراحة", aliases: ["truth"], level: 0, cooldown: 8,
     description: "سؤال صراحة أو تحدٍّ عشوائي", usage: "صراحة",
-    async run(ctx) { return ctx.reply(Math.random() < 0.5 ? "🗣️ صراحة: " + pick(TRUTH) : "🎯 تحدي: " + pick(DARE)); }
+    async run(ctx) { return ctx.reply(Math.random() < 0.5 ? "🗣️ لعبة الصراحة\n━━━━━━━━━━━━━━━━━━\n❓ " + pick(TRUTH) + "\n↳ أجب بصدق، والكل يسمع!" : "🎯 لعبة التحدي\n━━━━━━━━━━━━━━━━━━\n🔥 " + pick(DARE) + "\n↳ نفّذ التحدي، ولا تتراجع!"); }
 };

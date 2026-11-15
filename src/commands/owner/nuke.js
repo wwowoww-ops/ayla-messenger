@@ -8,8 +8,8 @@ module.exports = {
     description: "طرد جميع أعضاء المجموعة ما عدا المطوّرين (بتأكيد، وببطء)", usage: "نووي ثم: نووي تأكيد",
     async run(ctx) {
         const threadID = String(ctx.event.threadID);
-        if (running.has(threadID)) return ctx.reply("العملية جارية بالفعل.");
-        if (!(await ctx.perms.botIsAdmin(ctx.api, threadID))) return ctx.reply("لازم أكون أدمن في المجموعة.");
+        if (running.has(threadID)) return ctx.reply("⏳ العملية جارية بالفعل في هذه المجموعة.");
+        if (!(await ctx.perms.botIsAdmin(ctx.api, threadID))) return ctx.reply("⚠️ لا أملك صلاحية الأدمن في هذه المجموعة\n↳ لا يمكنني طرد الأعضاء بدونها.");
         const p = pending.get(threadID);
         if (!/^(تأكيد|تاكيد|confirm)$/.test(ctx.args[0] || "") || !p || p.by !== String(ctx.event.senderID) || Date.now() - p.at > 30000) {
             pending.set(threadID, { by: String(ctx.event.senderID), at: Date.now() });
@@ -17,12 +17,12 @@ module.exports = {
         }
         pending.delete(threadID);
         let info;
-        try { info = await ctx.api.getThreadInfo(threadID); } catch (e) { return ctx.reply("ما قدرت أجلب الأعضاء."); }
+        try { info = await ctx.api.getThreadInfo(threadID); } catch (e) { return ctx.reply("❌ تعذّر جلب قائمة الأعضاء الآن\n↳ حاول بعد قليل."); }
         const me = String(ctx.api.getCurrentUserID());
         const targets = (info.participantIDs || []).map(String).filter(id => id !== me && !ctx.perms.isOwner(id));
-        if (!targets.length) return ctx.reply("ما في أعضاء لأطردهم.");
+        if (!targets.length) return ctx.reply("ℹ️ لا يوجد أعضاء لأطردهم (الكل مطوّر أو أنا).");
         running.add(threadID);
-        await ctx.reply("☢️ بدأت: " + targets.length + " عضو. سأعمل ببطء، قد يستغرق دقائق.");
+        await ctx.reply("☢️ بدأت العملية\n👥 عدد الأعضاء المستهدفين: " + targets.length + "\n⏳ أعمل ببطء لحماية الحساب، وقد يستغرق ذلك دقائق.");
         let done = 0, failed = 0;
         try {
             for (const id of targets) {
@@ -32,6 +32,6 @@ module.exports = {
             }
         } finally { running.delete(threadID); }
         ctx.perms.invalidate(threadID);
-        return ctx.send("☢️ انتهى. طُرد " + done + " وفشل " + failed + " (غالبًا أدمن).");
+        return ctx.send("☢️ انتهت العملية\n✅ تم طرد: " + done + "\n❌ فشل: " + failed + (failed ? " (غالبًا أدمن لا أستطيع طرده)" : ""));
     }
 };

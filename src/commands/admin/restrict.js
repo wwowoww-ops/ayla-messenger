@@ -3,7 +3,7 @@ module.exports = {
     description: "جعل البوت يستجيب للأدمن فقط في هذه المجموعة", usage: "تقييد | (مرة ثانية لإلغاء التقييد)",
     async run(ctx) {
         const k = "restrict:" + ctx.event.threadID;
-        if (ctx.store.get(k)) { ctx.store.del(k); return ctx.reply("رجعت أستجيب للجميع 🌸"); }
-        ctx.store.set(k, true); return ctx.reply("تم التقييد: لن أستجيب إلا للأدمن.");
+        if (ctx.store.get(k)) { ctx.store.del(k); return ctx.reply("🔓 تم إلغاء التقييد\n↳ أستجيب الآن لجميع الأعضاء."); }
+        ctx.store.set(k, true); return ctx.reply("🔒 تم تقييد البوت\n↳ لن أستجيب إلا لأدمن المجموعة والمطوّرين.\n↳ لإلغاء التقييد أعد كتابة: " + ctx.prefix + "تقييد");
     }
 };

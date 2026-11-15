@@ -10,15 +10,15 @@ module.exports = {
         if (Number.isNaN(n)) {
             g = { n: 1 + Math.floor(Math.random() * 100), tries: 0 };
             ctx.store.set(key, g);
-            return ctx.reply("🎯 فكّرت برقم من 1 إلى 100. خمّن بكتابة: " + ctx.prefix + "خمن 50");
+            return ctx.reply("🎯 بدأت لعبة التخمين!\n━━━━━━━━━━━━━━━━━━\n🔢 فكّرت برقم من 1 إلى 100\n↳ خمّن بكتابة: " + ctx.prefix + "خمن 50\n↳ سأخبرك إن كان الرقم أكبر أم أصغر");
         }
-        if (!g) return ctx.reply("ابدأ لعبة أولًا بكتابة: " + ctx.prefix + "خمن");
+        if (!g) return ctx.reply("ℹ️ لا توجد لعبة جارية\n↳ ابدأ لعبة بكتابة: " + ctx.prefix + "خمن");
         g.tries++;
         if (n === g.n) {
             ctx.store.del(key);
             return ctx.send(ctx.mention(["🎉 ", { id: ctx.event.senderID, name: await ctx.nameOf(ctx.event.senderID) }, " خمّن الرقم " + g.n + " بعد " + g.tries + " محاولة! " + pick(["ذكي 🌸", "ما شاء الله 💖"])]));
         }
         ctx.store.set(key, g);
-        return ctx.reply(n < g.n ? "⬆️ الرقم أكبر" : "⬇️ الرقم أصغر");
+        return ctx.reply((n < g.n ? "⬆️ الرقم المطلوب أكبر من " + n : "⬇️ الرقم المطلوب أصغر من " + n) + "\n🔁 المحاولة رقم " + g.tries);
     }
 };
