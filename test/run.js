@@ -18,8 +18,9 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
         getCurrentUserID: () => "999",
         sendMessage: (m, t, cb, r) => { out.push({ m, t, r }); cb && cb(null, { messageID: "x" }); },
         getThreadHistory: async (tid, n, before) => { const now = Date.now(); if (before !== undefined && before < now - 9 * 86400000) return []; if (before !== undefined) return [{ messageID: "h9", senderID: "100", body: "قديمة", timestamp: now - 10 * 86400000 }]; return [{ messageID: "h1", senderID: "100", body: "مرحبا", timestamp: now - 1000 }, { messageID: "h2", senderID: "200", body: "", attachments: [{ type: "photo" }], timestamp: now - 2000 }, { messageID: "h3", senderID: "100", body: "تاني", timestamp: now - 3000 }, { messageID: "h4", senderID: "100", body: "أمس", timestamp: now - 30 * 3600000 }]; },
-        getThreadInfo: async () => ({ adminIDs: [{ id: "900" }, { id: "999" }, { id: "100" }], participantIDs: Object.keys(people), threadName: "اختبار", userInfo: Object.entries(people).map(([id, name]) => ({ id, name })) }),
+        getThreadInfo: async () => ({ approvalQueue: [{ requesterID: "300" }, { requesterID: "400" }], adminIDs: [{ id: "900" }, { id: "999" }, { id: "100" }], participantIDs: Object.keys(people), threadName: "اختبار", userInfo: Object.entries(people).map(([id, name]) => ({ id, name })) }),
         getUserInfo: async id => ({ [id]: { name: people[id] || "مجهول", gender: id === "100" || id === "300" ? 1 : 2 } }),
+        addUserToGroup: (u, t, cb) => { calls.push(["add", u]); cb && cb(); },
         removeUserFromGroup: (u, t, cb) => { calls.push(["kick", u]); cb && cb(); },
         changeNickname: (n, t, u, cb) => { calls.push(["nick", n, u]); cb && cb(); },
         changeAdminStatus: (t, u, v, cb) => { calls.push(["admin", u, v]); cb && cb(); },
@@ -72,6 +73,10 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     o = await msg("100", "3", { type: "message_reply", messageReply: { messageID: "x" } }); ok(/ليست قائمتك/.test(tx(o)), "قائمة غيرك مرفوضة");
     o = await msg("200", "رجوع", { type: "message_reply", messageReply: { messageID: "x" } }); ok(/❶/.test(tx(o)), "رجوع للقائمة الرئيسية");
     o = await msg("200", ".اوامر تحذير"); ok(/تفاصيل الأمر/.test(tx(o)) && /الصلاحية: أدمن المجموعة/.test(tx(o)), "تفاصيل أمر");
+    o = await msg("100", ".قبول"); ok(/طلبات الانضمام \(2\)/.test(tx(o)) && /🆔 400/.test(tx(o)), "قبول: عرض الطلبات");
+    o = await msg("100", ".قبول 2"); ok(calls.some(c => c[0] === "add" && c[1] === "400") && /تم قبول الطلب/.test(tx(o)), "قبول رقم");
+    o = await msg("100", ".قبول 9"); ok(/رقم غير صحيح/.test(tx(o)), "قبول رقم خارج النطاق");
+    o = await msg("200", ".قبول"); ok(/للأدمن|أدمن المجموعة/.test(tx(o)), "قبول للأدمن فقط");
     o = await msg("200", ".ابتايم"); ok(/مـدة الـتـشـغـيـل/.test(tx(o)) && /Heap/.test(tx(o)) && /الأوامر المستخدمة/.test(tx(o)), "ابتايم مفصّل");
     o = await msg("200", ".صراحة"); ok(/^⌬ ━━ 𝗔𝗬𝗟𝗔 FUN ━━ ⌬/.test(tx(o)), "هيدر تلقائي لكل رد");
     // ---- صلاحيات ----
