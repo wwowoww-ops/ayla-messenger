@@ -1,0 +1,8 @@
+node_modules
+appstate.json
+account.json
+*.bak
+.nexca/
+data/*.json
+.env
+config.local.js

@@ -1,0 +1,8 @@
+const { pick } = require("../../lib/util");
+const TRUTH = ["آخر كذبة قلتها؟", "أكثر موقف محرج صار لك؟", "من آخر شخص فكرت فيه؟", "شيء تخاف منه ولا تعترف؟", "أغرب شيء أكلته؟"];
+const DARE = ["اكتب رسالة بصوت عالٍ بدون همزات", "غيّر كنيتك لساعة", "قل نكتة الآن", "اكتب اسمك بالمقلوب", "ارسل إيموجي لكل من في الكروب"];
+module.exports = {
+    name: "صراحة", aliases: ["truth"], level: 0, cooldown: 8,
+    description: "سؤال صراحة أو تحدٍّ عشوائي", usage: "صراحة",
+    async run(ctx) { return ctx.reply(Math.random() < 0.5 ? "🗣️ صراحة: " + pick(TRUTH) : "🎯 تحدي: " + pick(DARE)); }
+};

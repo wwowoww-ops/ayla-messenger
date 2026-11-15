@@ -1,0 +1,12 @@
+{
+  "name": "ayla-messenger",
+  "version": "1.0.0",
+  "description": "AYLA - Facebook Messenger bot (fca-eryxenx) with an AI persona",
+  "main": "index.js",
+  "scripts": { "start": "node index.js", "test": "node test/run.js" },
+  "dependencies": {
+    "fca-eryxenx": "latest",
+    "pg": "^8.11.3"
+  },
+  "engines": { "node": ">=18" }
+}
