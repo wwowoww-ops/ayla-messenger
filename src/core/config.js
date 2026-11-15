@@ -12,6 +12,8 @@ const cfg = {
     aiModel: raw.aiModel || "claude",
     aiNPredict: raw.aiNPredict || 180,
     databaseUrl: clean(process.env.DATABASE_URL || raw.databaseUrl) || "",
+    // اختياري: رمز لجلب صور الملفات الشخصية بجودة عالية (FB_AVATAR_TOKEN). بدونه نستعمل بدائل.
+    avatarToken: clean(process.env.FB_AVATAR_TOKEN || raw.avatarToken) || "",
     appStatePath: raw.appStatePath || "appstate.json"
 };
 module.exports = cfg;

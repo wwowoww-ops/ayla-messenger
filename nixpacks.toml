@@ -1,0 +1,3 @@
+# خطوط للنص داخل الصور (بدونها قد تظهر مربعات بدل الحروف على Railway)
+[phases.setup]
+aptPkgs = ["fontconfig", "fonts-dejavu-core"]

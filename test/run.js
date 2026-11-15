@@ -45,12 +45,22 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     ok((await T.getTarget(api, { ...base, body: ".زواج", mentions: {} }, [])) === null, "بلا هدف يرجع null");
 
     // ---- أوامر ----
-    let o = await msg("200", ".زواج @ليلى", { mentions: { 300: "@ليلى" } });
-    ok(/صارا زوجين/.test(tx(o)) && o[0].m.mentions.length === 2, "زواج بمنشن + وسوم المنشن في الرد");
+    // أوامر الصور أبطأ (جلب صورة + رسم): ننتظر ظهور الرسالة
+    const img = async (sender, body, extra) => { out = []; calls = []; const e = Object.assign({ type: "message", senderID: sender, threadID: "G1", isGroup: true, messageID: "m" + (++mid), body, mentions: {}, attachments: [] }, extra || {}); dispatch(api, e); for (let i = 0; i < 200 && !out.length; i++) await new Promise(r => setTimeout(r, 50)); return out; };
+    let o = await img("200", ".زواج @ليلى", { mentions: { 300: "@ليلى" } });
+    ok(/يتزوج/.test(tx(o)) && o[0].m.mentions.length === 2 && o[0].m.attachment && typeof o[0].m.attachment.pipe === "function", "زواج: صورة مرفقة + وسوم المنشن");
     o = await msg("200", ".زواج @ليلى", { mentions: { 300: "@ليلى" } }); ok(/متزوج/.test(tx(o)), "منع زواج مكرر");
     o = await msg("200", ".زوجي"); ok(/ليلى/.test(tx(o)), "زوجي");
     o = await msg("200", ".طلاق"); ok(/الطلاق/.test(tx(o)), "طلاق");
-    o = await msg("200", ".حضن @ليلى", { mentions: { 300: "@ليلى" } }); ok(/يحتضن/.test(tx(o)), "حضن");
+    o = await img("200", ".حضن @ليلى", { mentions: { 300: "@ليلى" } }); ok(/يحتضن/.test(tx(o)) && o[0].m.attachment, "حضن بصورة");
+    for (const c of ["مطلوب", "قبر", "سجن", "شهادة", "هوية", "ملك", "ملكة", "عملة", "مجلة"]) { o = await img("200", "." + c + " @ليلى", { mentions: { 300: "@ليلى" } }); ok(o[0] && o[0].m.attachment && o[0].m.mentions.length === 1, "صورة فردية: " + c); }
+    o = await img("200", ".مطلوب"); ok(o[0] && o[0].m.attachment, "فردي بلا منشن = صورتك");
+    for (const c of ["بوسة", "صداقة", "مواجهة", "صفع"]) { o = await img("100", "." + c + " @محمد", { mentions: { 200: "@محمد" } }); ok(o[0] && o[0].m.attachment && o[0].m.mentions.length === 2, "صورة ثنائية: " + c); }
+    o = await img("100", ".بوسة"); ok(/مع من/.test(tx(o)), "ثنائي بلا هدف يسأل");
+    await msg("100", ".طلاق"); o = await img("100", ".زوجيني"); ok(o[0] && o[0].m.attachment && /%/.test(tx(o)), "زوجيني عشوائي بنسبة");
+    await msg("100", ".طلاق");
+    o = await msg("200", ".خمن"); ok(/فكّرت/.test(tx(o)), "خمن تبدأ"); o = await msg("200", ".خمن 50"); ok(/أكبر|أصغر|خمّن/.test(tx(o)), "خمن تلميح");
+    o = await msg("200", ".قول مرحبا"); ok(/مرحبا/.test(tx(o)) && calls.some(c => c[0] === "unsend"), "قول + محاولة حذف");
     o = await msg("200", ".توافق @ليلى", { mentions: { 300: "@ليلى" } }); ok(/%/.test(tx(o)), "توافق");
     o = await msg("200", ".اوامر"); ok(/الإدارة/.test(tx(o)) === false && /تسلية/.test(tx(o)), "قائمة الأوامر تخفي أوامر الإدارة عن العضو");
     o = await msg("100", ".اوامر"); ok(/الإدارة/.test(tx(o)) && !/المطوّر/.test(tx(o)), "الأدمن يرى الإدارة لا المطوّر");
