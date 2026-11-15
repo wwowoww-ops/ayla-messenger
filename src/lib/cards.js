@@ -1,65 +1,64 @@
-// قوالب الصور مرسومة بالكود (SVG) — نصوص لاتينية فقط داخل الصورة كي لا تعتمد على خطوط عربية
+// قوالب نيونية مرسومة بالكود (SVG). نصوص لاتينية فقط داخل الصورة.
+// زواج/حضن/صفع: إن وُجد assets/templates/<marry|hug|slap>.png يُستعمل خلفيةً (1000×600) وتوضع الصورتان في مكانيهما الثابتين دون أي رسم فوقها.
+const fs = require("fs");
+const path = require("path");
+const sharp = require("sharp");
 const { card, esc } = require("./img");
-const F = "DejaVu Sans, Arial, sans-serif", S = "DejaVu Serif, Georgia, serif";
-const t = (x, y, s, size, fill, extra) => `<text x="${x}" y="${y}" text-anchor="middle" font-family="${extra && extra.serif ? S : F}" font-size="${size}" font-weight="${(extra && extra.w) || "bold"}" fill="${fill}" ${(extra && extra.attr) || ""}>${esc(s)}</text>`;
-const grad = (id, a, b, v) => `<linearGradient id="${id}" x1="0" y1="0" x2="${v ? 0 : 1}" y2="${v ? 1 : 1}"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
-const hearts = (n, w, h, color) => { let o = ""; for (let i = 0; i < n; i++) { const x = (i * 137) % w, y = (i * 89) % h, s = 14 + (i * 7) % 22; o += `<text x="${x}" y="${y}" font-size="${s}" fill="${color}" opacity=".35" font-family="${F}">♥</text>`; } return o; };
+const F = "DejaVu Sans, Arial, sans-serif";
+const NEON = { pink: "#ff2ea6", cyan: "#19f2ff", purple: "#a64bff", yellow: "#ffe94a", green: "#39ff88", red: "#ff3b5c", orange: "#ff9a2e" };
 
-// ---------- فردية (800×800) ----------
+const defs = `<defs><filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="14"/></filter><radialGradient id="bgr" cx=".5" cy=".45" r=".8"><stop offset="0" stop-color="#2a0f55"/><stop offset="1" stop-color="#07031a"/></radialGradient></defs>`;
+const bg = (w, h) => `${defs}<rect width="${w}" height="${h}" fill="url(#bgr)"/>${grid(w, h)}`;
+const grid = (w, h) => { let o = '<g stroke="#a64bff" stroke-opacity=".12" stroke-width="2">'; for (let x = 0; x <= w; x += 50) o += `<line x1="${x}" y1="0" x2="${x}" y2="${h}"/>`; for (let y = 0; y <= h; y += 50) o += `<line x1="0" y1="${y}" x2="${w}" y2="${y}"/>`; return o + "</g>"; };
+const t = (x, y, s, size, c, w) => `<text x="${x}" y="${y}" text-anchor="middle" font-family="${F}" font-size="${size}" font-weight="${w || "bold"}" fill="${c}" filter="url(#glow)">${esc(s)}</text>`;
+const frame = (x, y, w, h, c, r) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r || 18}" fill="none" stroke="${c}" stroke-width="7" filter="url(#glow)"/>`;
+const ring = (x, y, r, c) => `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${c}" stroke-width="8" filter="url(#glow)"/>`;
+const heart = (x, y, s, c) => `<text x="${x}" y="${y}" text-anchor="middle" font-size="${s}" fill="${c}" font-family="${F}" filter="url(#glow)">♥</text>`;
+const sparks = (n, w, h, c) => { let o = ""; for (let i = 0; i < n; i++) o += `<circle cx="${(i * 197) % w}" cy="${(i * 113) % h}" r="${2 + i % 4}" fill="${c}" opacity=".7"/>`; return o; };
+
 const single = {
-    wanted: async a => card(800, 1000,
-        `<rect width="800" height="1000" fill="#c9a66b"/><rect x="20" y="20" width="760" height="960" fill="none" stroke="#5a3a1a" stroke-width="10"/>${t(400, 150, "WANTED", 130, "#3b2410", { serif: 1 })}${t(400, 215, "DEAD OR ALIVE", 40, "#3b2410", { serif: 1 })}<rect x="150" y="260" width="500" height="500" fill="#3b2410"/>${t(400, 850, "REWARD", 60, "#3b2410", { serif: 1 })}${t(400, 930, "$ 1,000,000", 70, "#7a1f10", { serif: 1 })}`,
-        [{ buf: a[0], size: 480, x: 400, y: 510, ring: 0 }],
-        `<rect x="160" y="270" width="480" height="480" fill="none"/>`).then(b => b),
-    grave: async a => card(800, 900,
-        `<defs>${grad("sky", "#1b1f3a", "#4b3f6b", 1)}</defs><rect width="800" height="900" fill="url(#sky)"/><circle cx="650" cy="140" r="60" fill="#f3efd0" opacity=".9"/><rect y="720" width="800" height="180" fill="#1d2a1d"/><path d="M180 760 V330 a220 220 0 0 1 440 0 V760 Z" fill="#8d9096" stroke="#555" stroke-width="8"/>${t(400, 230, "R.I.P", 90, "#2c2e33", { serif: 1 })}${t(400, 700, "NEVER FORGOTTEN", 24, "#2c2e33", { serif: 1 })}`,
-        [{ buf: a[0], size: 260, x: 400, y: 470, ring: 8, ringColor: "#2c2e33" }]),
-    jail: async a => {
-        let bars = ""; for (let x = 60; x < 800; x += 85) bars += `<rect x="${x}" y="0" width="22" height="800" fill="#2a2a2a"/><rect x="${x + 4}" y="0" width="6" height="800" fill="#6a6a6a"/>`;
-        return card(800, 800, `<rect width="800" height="800" fill="#7d8186"/>`, [{ buf: a[0], size: 640, x: 400, y: 400, ring: 0 }],
-            `<rect width="800" height="800" fill="#000" opacity=".25"/>${bars}<rect y="0" width="800" height="18" fill="#222"/><rect y="782" width="800" height="18" fill="#222"/>`);
+    wanted: a => card(800, 1000, bg(800, 1000) + frame(20, 20, 760, 960, NEON.orange, 26) + sparks(30, 800, 1000, NEON.yellow) + frame(150, 260, 500, 500, NEON.pink, 20),
+        [{ buf: a[0], size: 460, x: 400, y: 510 }], t(400, 150, "WANTED", 130, NEON.orange) + t(400, 215, "DEAD OR ALIVE", 38, NEON.yellow) + t(400, 850, "REWARD", 60, NEON.cyan) + t(400, 930, "$ 1,000,000", 70, NEON.pink)),
+    grave: a => card(800, 900, bg(800, 900) + `<circle cx="650" cy="140" r="60" fill="${NEON.cyan}" filter="url(#glow)" opacity=".85"/><path d="M180 790 V330 a220 220 0 0 1 440 0 V790" fill="#120a2a" stroke="${NEON.purple}" stroke-width="8" filter="url(#glow)"/>${sparks(24, 800, 900, NEON.green)}`,
+        [{ buf: a[0], size: 260, x: 400, y: 470, ring: 8, ringColor: NEON.purple }], t(400, 230, "R.I.P", 90, NEON.cyan) + t(400, 700, "NEVER FORGOTTEN", 26, NEON.purple)),
+    jail: a => {
+        let bars = ""; for (let x = 60; x < 800; x += 85) bars += `<rect x="${x}" y="0" width="16" height="800" fill="${NEON.cyan}" filter="url(#glow)"/>`;
+        return card(800, 800, bg(800, 800), [{ buf: a[0], size: 640, x: 400, y: 400 }], `${defs}<rect width="800" height="800" fill="#07031a" opacity=".3"/>${bars}<rect y="0" width="800" height="16" fill="${NEON.pink}" filter="url(#glow)"/><rect y="784" width="800" height="16" fill="${NEON.pink}" filter="url(#glow)"/>`);
     },
-    cert: async a => card(1000, 720,
-        `<rect width="1000" height="720" fill="#f7f0dc"/><rect x="25" y="25" width="950" height="670" fill="none" stroke="#b8922f" stroke-width="12"/><rect x="48" y="48" width="904" height="624" fill="none" stroke="#b8922f" stroke-width="3"/>${t(500, 150, "CERTIFICATE", 76, "#7a5a12", { serif: 1 })}${t(500, 205, "OF ACHIEVEMENT", 34, "#7a5a12", { serif: 1 })}${t(500, 560, "Officially a legend", 38, "#444", { serif: 1, w: "normal", attr: 'font-style="italic"' })}<line x1="150" y1="640" x2="400" y2="640" stroke="#555" stroke-width="2"/>${t(275, 665, "SIGNATURE", 18, "#555", { w: "normal" })}<circle cx="810" cy="610" r="48" fill="#b8302a"/>${t(810, 622, "★", 50, "#fff")}`,
-        [{ buf: a[0], size: 230, x: 500, y: 385, ring: 8, ringColor: "#b8922f" }]),
-    id: async a => card(900, 560,
-        `<defs>${grad("g", "#1e4d8c", "#2f7fc7")}</defs><rect width="900" height="560" rx="30" fill="url(#g)"/><rect y="0" width="900" height="95" rx="30" fill="#14345f"/><rect y="60" width="900" height="35" fill="#14345f"/>${t(450, 65, "IDENTITY CARD", 44, "#fff")}<rect x="60" y="140" width="300" height="360" rx="14" fill="#fff" opacity=".18"/><rect x="400" y="170" width="420" height="26" rx="6" fill="#fff" opacity=".6"/><rect x="400" y="230" width="340" height="26" rx="6" fill="#fff" opacity=".4"/><rect x="400" y="290" width="380" height="26" rx="6" fill="#fff" opacity=".4"/><rect x="400" y="350" width="260" height="26" rx="6" fill="#fff" opacity=".4"/><rect x="400" y="440" width="420" height="40" fill="#fff" opacity=".85"/>${[...Array(30)].map((_, i) => `<rect x="${405 + i * 14}" y="445" width="${i % 3 + 2}" height="30" fill="#14345f"/>`).join("")}`,
-        [{ buf: a[0], size: 280, x: 210, y: 320, ring: 0 }]),
-    king: async (a, o) => {
-        const q = o && o.queen;
-        return card(800, 800, `<defs>${grad("b", q ? "#6b1f6e" : "#7a1020", q ? "#c04ba8" : "#d6402e", 1)}</defs><rect width="800" height="800" fill="url(#b)"/><circle cx="400" cy="470" r="250" fill="#f3c93b" opacity=".35"/>`,
-            [{ buf: a[0], size: 330, x: 400, y: 470, ring: 10, ringColor: "#f3c93b" }],
-            `<path d="M230 300 L270 150 L340 240 L400 120 L460 240 L530 150 L570 300 Z" fill="#f3c93b" stroke="#a37d0b" stroke-width="8"/><circle cx="270" cy="150" r="14" fill="#e03a3a"/><circle cx="400" cy="120" r="16" fill="#3a7be0"/><circle cx="530" cy="150" r="14" fill="#e03a3a"/>${t(400, 745, q ? "THE QUEEN" : "THE KING", 70, "#f3c93b", { serif: 1 })}`);
+    cert: a => card(1000, 720, bg(1000, 720) + frame(30, 30, 940, 660, NEON.yellow, 24) + frame(52, 52, 896, 616, NEON.pink, 16),
+        [{ buf: a[0], size: 230, x: 500, y: 385, ring: 8, ringColor: NEON.yellow }], t(500, 150, "CERTIFICATE", 76, NEON.yellow) + t(500, 205, "OF ACHIEVEMENT", 34, NEON.cyan) + t(500, 560, "Officially a legend", 38, "#fff", "normal") + `<line x1="150" y1="640" x2="400" y2="640" stroke="${NEON.cyan}" stroke-width="3" filter="url(#glow)"/>` + t(275, 668, "SIGNATURE", 18, NEON.cyan, "normal") + ring(810, 610, 46, NEON.pink) + t(810, 626, "★", 48, NEON.pink)),
+    id: a => card(900, 560, bg(900, 560) + frame(14, 14, 872, 532, NEON.cyan, 30) + frame(60, 140, 300, 360, NEON.pink, 14),
+        [{ buf: a[0], size: 270, x: 210, y: 320 }], t(450, 78, "IDENTITY CARD", 46, NEON.cyan) + [0, 1, 2, 3].map(i => `<rect x="400" y="${170 + i * 60}" width="${[420, 340, 380, 260][i]}" height="24" rx="6" fill="${NEON.purple}" opacity=".8" filter="url(#glow)"/>`).join("") + [...Array(30)].map((_, i) => `<rect x="${405 + i * 14}" y="440" width="${i % 3 + 2}" height="46" fill="${NEON.green}"/>`).join("")),
+    king: (a, o) => {
+        const q = o && o.queen, c = q ? NEON.pink : NEON.cyan;
+        return card(800, 800, bg(800, 800) + `<circle cx="400" cy="470" r="260" fill="${c}" opacity=".25" filter="url(#soft)"/>`, [{ buf: a[0], size: 330, x: 400, y: 470, ring: 10, ringColor: c }],
+            `<path d="M230 300 L270 150 L340 240 L400 120 L460 240 L530 150 L570 300 Z" fill="none" stroke="${NEON.yellow}" stroke-width="10" stroke-linejoin="round" filter="url(#glow)"/>` + t(400, 745, q ? "THE QUEEN" : "THE KING", 70, NEON.yellow));
     },
-    coin: async a => card(800, 800,
-        `<rect width="800" height="800" fill="#16181d"/><defs><radialGradient id="c"><stop offset="0" stop-color="#ffe78a"/><stop offset="1" stop-color="#b8861a"/></radialGradient></defs><circle cx="400" cy="400" r="370" fill="url(#c)" stroke="#8a6410" stroke-width="12"/><circle cx="400" cy="400" r="335" fill="none" stroke="#8a6410" stroke-width="6" stroke-dasharray="4 10"/>`,
-        [{ buf: a[0], size: 440, x: 400, y: 400, ring: 10, ringColor: "#8a6410" }],
-        `${t(400, 128, "ONE LEGEND", 34, "#6b4a08", { serif: 1 })}${t(400, 725, "★ ★ ★", 44, "#6b4a08")}`),
-    magazine: async a => card(800, 1050,
-        `<defs>${grad("m", "#1b2845", "#6a3d7c", 1)}</defs><rect width="800" height="1050" fill="url(#m)"/>`,
-        [{ buf: a[0], size: 600, x: 400, y: 560, ring: 0 }],
-        `${t(400, 150, "STAR", 150, "#ff3b6b", { serif: 1 })}${t(400, 205, "THE MAGAZINE · ISSUE #1", 26, "#fff", { w: "normal" })}<rect x="40" y="840" width="460" height="6" fill="#ffd23b"/>${t(270, 905, "EXCLUSIVE COVER STORY", 36, "#ffd23b")}${t(270, 955, "Everything you wanted to know", 24, "#fff", { w: "normal" })}${t(270, 995, "and more inside", 24, "#fff", { w: "normal" })}<circle cx="680" cy="900" r="70" fill="#ff3b6b"/>${t(680, 893, "SPECIAL", 22, "#fff")}${t(680, 925, "EDITION", 22, "#fff")}`)
+    coin: a => card(800, 800, bg(800, 800) + ring(400, 400, 360, NEON.yellow) + `<circle cx="400" cy="400" r="325" fill="none" stroke="${NEON.orange}" stroke-width="5" stroke-dasharray="4 12"/>`,
+        [{ buf: a[0], size: 440, x: 400, y: 400, ring: 10, ringColor: NEON.yellow }], t(400, 128, "ONE LEGEND", 34, NEON.yellow) + t(400, 725, "★ ★ ★", 44, NEON.orange)),
+    magazine: a => card(800, 1050, bg(800, 1050) + frame(16, 16, 768, 1018, NEON.purple, 20),
+        [{ buf: a[0], size: 600, x: 400, y: 560 }], t(400, 150, "STAR", 150, NEON.pink) + t(400, 205, "THE MAGAZINE · ISSUE #1", 26, NEON.cyan, "normal") + `<rect x="40" y="840" width="460" height="6" fill="${NEON.yellow}" filter="url(#glow)"/>` + t(270, 905, "EXCLUSIVE COVER STORY", 34, NEON.yellow) + t(270, 955, "Everything you wanted to know", 24, "#fff", "normal") + t(270, 995, "and more inside", 24, "#fff", "normal") + ring(680, 900, 66, NEON.pink) + t(680, 893, "SPECIAL", 20, NEON.pink) + t(680, 922, "EDITION", 20, NEON.pink))
 };
 
-// ---------- ثنائية (1000×600) ----------
+// أماكن الصورتين (ثابتة، لا تتغير): يسار/يمين
+const SLOT = { marry: [[250, 330, 300], [750, 330, 300]], hug: [[300, 330, 320], [700, 330, 320]], slap: [[250, 330, 300], [750, 330, 300]] };
+const tpl = k => { const p = path.join(__dirname, "..", "..", "assets", "templates", k + ".png"); return fs.existsSync(p) ? p : null; };
+async function slotted(key, a, text, accent, decor) {
+    const s = SLOT[key], av = [{ buf: a[0], size: s[0][2], x: s[0][0], y: s[0][1], ring: 8, ringColor: accent }, { buf: a[1], size: s[1][2], x: s[1][0], y: s[1][1], ring: 8, ringColor: accent }];
+    const file = tpl(key);
+    if (file) { // قالب مرفوع من المستخدم: خلفية فقط، لا نصوص ولا زخارف فوقه
+        const base = await sharp(file).resize(1000, 600, { fit: "cover" }).png().toBuffer();
+        return card(1000, 600, `<image href="data:image/png;base64,${base.toString("base64")}" width="1000" height="600"/>`, av, "");
+    }
+    return card(1000, 600, bg(1000, 600) + frame(10, 10, 980, 580, accent, 26) + decor, av, text);
+}
+
 const dual = {
-    marry: async a => card(1000, 600, `<defs>${grad("w", "#ffd6e8", "#fff3f8")}</defs><rect width="1000" height="600" fill="url(#w)"/>${hearts(26, 1000, 600, "#e8478b")}`,
-        [{ buf: a[0], size: 270, x: 250, y: 310, ring: 10, ringColor: "#fff" }, { buf: a[1], size: 270, x: 750, y: 310, ring: 10, ringColor: "#fff" }],
-        `${t(500, 110, "JUST MARRIED", 70, "#c2185b", { serif: 1 })}<text x="500" y="350" text-anchor="middle" font-size="130" fill="#e8478b" font-family="${F}">♥</text>${t(500, 520, "Congratulations!", 44, "#c2185b", { serif: 1, w: "normal", attr: 'font-style="italic"' })}`),
-    hug: async a => card(1000, 600, `<defs>${grad("h", "#ffe3b3", "#ffb88a")}</defs><rect width="1000" height="600" fill="url(#h)"/>${hearts(14, 1000, 600, "#fff")}`,
-        [{ buf: a[0], size: 300, x: 380, y: 320, ring: 9, ringColor: "#fff" }, { buf: a[1], size: 300, x: 620, y: 320, ring: 9, ringColor: "#fff" }],
-        `${t(500, 90, "BIG HUG", 64, "#a4451b", { serif: 1 })}${t(500, 555, "Warm & tight 🤗".replace(" 🤗", ""), 40, "#a4451b", { serif: 1, w: "normal" })}`),
-    kiss: async a => card(1000, 600, `<defs>${grad("k", "#ff9ec3", "#c94b8a")}</defs><rect width="1000" height="600" fill="url(#k)"/>${hearts(30, 1000, 600, "#fff")}`,
-        [{ buf: a[0], size: 280, x: 260, y: 320, ring: 9, ringColor: "#fff" }, { buf: a[1], size: 280, x: 740, y: 320, ring: 9, ringColor: "#fff" }],
-        `${t(500, 100, "SWEET KISS", 64, "#fff", { serif: 1 })}<text x="500" y="370" text-anchor="middle" font-size="150" fill="#fff" font-family="${F}">♥</text>`),
-    friend: async a => card(1000, 600, `<defs>${grad("f", "#a7e0ff", "#d3f5c9")}</defs><rect width="1000" height="600" fill="url(#f)"/>`,
-        [{ buf: a[0], size: 270, x: 260, y: 320, ring: 9, ringColor: "#fff" }, { buf: a[1], size: 270, x: 740, y: 320, ring: 9, ringColor: "#fff" }],
-        `${t(500, 100, "BEST FRIENDS", 64, "#1d5a80", { serif: 1 })}<path d="M390 330 Q500 250 610 330" fill="none" stroke="#1d5a80" stroke-width="14" stroke-linecap="round"/><text x="500" y="470" text-anchor="middle" font-size="90" fill="#e8478b" font-family="${F}">★</text>${t(500, 560, "Forever", 40, "#1d5a80", { serif: 1, w: "normal", attr: 'font-style="italic"' })}`),
-    vs: async a => card(1000, 600, `<rect width="500" height="600" fill="#1f5fbf"/><rect x="500" width="500" height="600" fill="#c0282d"/>`,
-        [{ buf: a[0], size: 330, x: 250, y: 320, ring: 10, ringColor: "#fff" }, { buf: a[1], size: 330, x: 750, y: 320, ring: 10, ringColor: "#fff" }],
-        `<polygon points="470,0 530,0 500,600 440,600" fill="#111" opacity=".0"/><circle cx="500" cy="300" r="82" fill="#111" stroke="#ffd23b" stroke-width="8"/>${t(500, 330, "VS", 84, "#ffd23b")}${t(500, 70, "FIGHT!", 50, "#fff")}`),
-    slap: async a => card(1000, 600, `<defs>${grad("s", "#fff3b0", "#ff9a3c")}</defs><rect width="1000" height="600" fill="url(#s)"/><g stroke="#ff6a00" stroke-width="10" opacity=".5">${[...Array(16)].map((_, i) => { const an = i * Math.PI / 8; return `<line x1="500" y1="300" x2="${500 + Math.cos(an) * 700}" y2="${300 + Math.sin(an) * 700}"/>`; }).join("")}</g>`,
-        [{ buf: a[0], size: 250, x: 230, y: 330, ring: 9, ringColor: "#fff" }, { buf: a[1], size: 290, x: 770, y: 320, ring: 9, ringColor: "#fff" }],
-        `<polygon points="440,230 480,300 420,310 470,380 400,370 440,440 560,330 520,320 570,250 510,260 540,190" fill="#ffe14a" stroke="#c20000" stroke-width="7"/>${t(500, 110, "SLAP!", 110, "#c20000", { serif: 1 })}`)
+    marry: a => slotted("marry", a, t(500, 100, "JUST MARRIED", 70, NEON.pink) + heart(500, 400, 130, NEON.pink) + t(500, 545, "Congratulations!", 42, NEON.cyan, "normal"), NEON.pink, sparks(30, 1000, 600, NEON.pink)),
+    hug: a => slotted("hug", a, t(500, 90, "BIG HUG", 64, NEON.orange) + t(500, 560, "Warm & tight", 38, NEON.yellow, "normal"), NEON.orange, sparks(24, 1000, 600, NEON.yellow)),
+    slap: a => slotted("slap", a, `<polygon points="440,230 480,300 420,310 470,380 400,370 440,440 560,330 520,320 570,250 510,260 540,190" fill="none" stroke="${NEON.yellow}" stroke-width="8" filter="url(#glow)"/>` + t(500, 110, "SLAP!", 110, NEON.red), NEON.red, sparks(24, 1000, 600, NEON.orange)),
+    kiss: a => card(1000, 600, bg(1000, 600) + frame(10, 10, 980, 580, NEON.pink, 26) + sparks(30, 1000, 600, NEON.pink), [{ buf: a[0], size: 280, x: 260, y: 320, ring: 8, ringColor: NEON.pink }, { buf: a[1], size: 280, x: 740, y: 320, ring: 8, ringColor: NEON.pink }], t(500, 100, "SWEET KISS", 64, NEON.pink) + heart(500, 380, 150, NEON.pink)),
+    friend: a => card(1000, 600, bg(1000, 600) + frame(10, 10, 980, 580, NEON.cyan, 26), [{ buf: a[0], size: 270, x: 260, y: 320, ring: 8, ringColor: NEON.cyan }, { buf: a[1], size: 270, x: 740, y: 320, ring: 8, ringColor: NEON.cyan }], t(500, 100, "BEST FRIENDS", 64, NEON.cyan) + `<path d="M390 330 Q500 250 610 330" fill="none" stroke="${NEON.green}" stroke-width="12" stroke-linecap="round" filter="url(#glow)"/>` + t(500, 470, "★", 90, NEON.yellow) + t(500, 560, "Forever", 40, NEON.green, "normal")),
+    vs: a => card(1000, 600, `${defs}<rect width="500" height="600" fill="#061a3d"/><rect x="500" width="500" height="600" fill="#3d0613"/>${grid(1000, 600)}<line x1="500" y1="0" x2="500" y2="600" stroke="#fff" stroke-width="4" filter="url(#glow)"/>`, [{ buf: a[0], size: 330, x: 250, y: 320, ring: 8, ringColor: NEON.cyan }, { buf: a[1], size: 330, x: 750, y: 320, ring: 8, ringColor: NEON.red }], ring(500, 300, 78, NEON.yellow) + t(500, 330, "VS", 80, NEON.yellow) + t(500, 70, "FIGHT!", 50, "#fff"))
 };
-module.exports = { single, dual };
+module.exports = { single, dual, SLOT };
