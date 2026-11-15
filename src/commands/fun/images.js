@@ -66,7 +66,7 @@ const zawjini = {
         ctx.store.set("marry:" + pid, { spouse: me, name: myName, at });
         const [a, b] = await Promise.all([img.avatar(ctx.api, me, myName, 400), img.avatar(ctx.api, pid, pname, 400)]);
         const m = ctx.mention(["💍 زواج عشوائي! ", { id: me, name: myName }, " و ", { id: pid, name: pname }, " — نسبة الحب " + pct + "% 💖"]);
-        return img.sendImage(ctx.api, await dual.marry([a, b]), m.body, ctx.event.threadID, ctx.event.messageID, m.mentions);
+        return img.sendImage(ctx.api, (await require("../../lib/cards").hinaCard("zawjini", [a, b])) || await dual.marry([a, b]), m.body, ctx.event.threadID, ctx.event.messageID, m.mentions);
     }
 };
 

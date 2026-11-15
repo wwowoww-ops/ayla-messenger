@@ -42,6 +42,32 @@ const single = {
 
 // أماكن الصورتين (ثابتة، لا تتغير): يسار/يمين
 const SLOT = { marry: [[250, 330, 300], [750, 330, 300]], hug: [[300, 330, 320], [700, 330, 320]], slap: [[250, 330, 300], [750, 330, 300]] };
+// قوالب Hina الأصلية (روابط خارجية): تُحمَّل مرة وتُخزَّن، والصور تُلصق بنفس إحداثيات Hina (x,y = الزاوية العلوية اليسرى، s = القطر). عند فشل التحميل نرجع للقالب النيوني.
+const HINA = {
+    hug: { url: "https://i.ibb.co/3YN3T1r/q1y28eqblsr21.jpg", slots: [{ x: 320, y: 100, s: 150 }, { x: 280, y: 280, s: 130 }] },
+    marry: { url: "https://i.ibb.co/9ZZCSzR/ba6abadae46b5bdaa29cf6a64d762874.jpg", slots: [{ x: 200, y: 70, s: 130 }, { x: 350, y: 150, s: 130 }] },
+    zawjini: { url: "https://files.catbox.moe/8zlvjg.jpg", slots: [{ x: 69, y: 163, s: 153 }, { x: 619, y: 163, s: 153 }] }
+};
+const CACHE = path.join(__dirname, "..", "..", "data", "tpl");
+async function hinaBase(key) {
+    const h = HINA[key]; if (!h) return null;
+    const f = path.join(CACHE, key + ".img");
+    try { if (fs.existsSync(f)) return fs.readFileSync(f); } catch (e) { /* نحمّل */ }
+    try {
+        const { fetchBuf } = require("./img");
+        const b = await fetchBuf(h.url, 20000);
+        await sharp(b).metadata(); // تأكد أنها صورة سليمة
+        try { fs.mkdirSync(CACHE, { recursive: true }); fs.writeFileSync(f, b); } catch (e) { /* التخزين اختياري */ }
+        return b;
+    } catch (e) { return null; }
+}
+async function hinaCard(key, a) {
+    const base = await hinaBase(key); if (!base) return null;
+    const m = await sharp(base).metadata(), h = HINA[key];
+    const png = await sharp(base).png().toBuffer();
+    return card(m.width, m.height, `<image href="data:image/png;base64,${png.toString("base64")}" width="${m.width}" height="${m.height}"/>`,
+        h.slots.map((sl, i) => ({ buf: a[i], size: sl.s, x: sl.x + sl.s / 2, y: sl.y + sl.s / 2 })), "");
+}
 const tpl = k => { const p = path.join(__dirname, "..", "..", "assets", "templates", k + ".png"); return fs.existsSync(p) ? p : null; };
 async function slotted(key, a, text, accent, decor) {
     const s = SLOT[key], av = [{ buf: a[0], size: s[0][2], x: s[0][0], y: s[0][1], ring: 8, ringColor: accent }, { buf: a[1], size: s[1][2], x: s[1][0], y: s[1][1], ring: 8, ringColor: accent }];
@@ -50,6 +76,8 @@ async function slotted(key, a, text, accent, decor) {
         const base = await sharp(file).resize(1000, 600, { fit: "cover" }).png().toBuffer();
         return card(1000, 600, `<image href="data:image/png;base64,${base.toString("base64")}" width="1000" height="600"/>`, av, "");
     }
+    const orig = await hinaCard(key, a);
+    if (orig) return orig;
     return card(1000, 600, bg(1000, 600) + frame(10, 10, 980, 580, accent, 26) + decor, av, text);
 }
 
@@ -61,4 +89,4 @@ const dual = {
     friend: a => card(1000, 600, bg(1000, 600) + frame(10, 10, 980, 580, NEON.cyan, 26), [{ buf: a[0], size: 270, x: 260, y: 320, ring: 8, ringColor: NEON.cyan }, { buf: a[1], size: 270, x: 740, y: 320, ring: 8, ringColor: NEON.cyan }], t(500, 100, "BEST FRIENDS", 64, NEON.cyan) + `<path d="M390 330 Q500 250 610 330" fill="none" stroke="${NEON.green}" stroke-width="12" stroke-linecap="round" filter="url(#glow)"/>` + t(500, 470, "★", 90, NEON.yellow) + t(500, 560, "Forever", 40, NEON.green, "normal")),
     vs: a => card(1000, 600, `${defs}<rect width="500" height="600" fill="#061a3d"/><rect x="500" width="500" height="600" fill="#3d0613"/>${grid(1000, 600)}<line x1="500" y1="0" x2="500" y2="600" stroke="#fff" stroke-width="4" filter="url(#glow)"/>`, [{ buf: a[0], size: 330, x: 250, y: 320, ring: 8, ringColor: NEON.cyan }, { buf: a[1], size: 330, x: 750, y: 320, ring: 8, ringColor: NEON.red }], ring(500, 300, 78, NEON.yellow) + t(500, 330, "VS", 80, NEON.yellow) + t(500, 70, "FIGHT!", 50, "#fff"))
 };
-module.exports = { single, dual, SLOT };
+module.exports = { single, dual, SLOT, hinaCard };

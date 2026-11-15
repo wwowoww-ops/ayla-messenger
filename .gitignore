@@ -6,3 +6,4 @@ account.json
 data/*.json
 .env
 config.local.js
+data/tpl/
