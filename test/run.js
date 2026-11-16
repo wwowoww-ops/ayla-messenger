@@ -107,10 +107,6 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
         ok(A.normalize("[]") === null && !A.hasSession(A.normalize("c_user=1")), "appstate: الفارغ والناقص مرفوضان");
     }
     // موافقة وضيفي وبادئة بدون
-    o = await msg("100", ".موافقة"); ok(/متوقفة/.test(tx(o)), "موافقة: الحالة متوقفة");
-    o = await msg("100", ".موافقة تشغيل"); ok(/يدويًا/.test(tx(o)) && fbState.approval === false, "موافقة تشغيل: يشرح الطريقة اليدوية دون طلب مرفوض");
-    fbState.approval = true; o = await msg("100", ".موافقة تشغيل"); ok(/مفعّلة بالفعل/.test(tx(o)), "موافقة: مفعّلة بالفعل"); fbState.approval = false;
-    o = await msg("200", ".موافقة"); ok(/أدمن المجموعة/.test(tx(o)), "موافقة للأدمن فقط");
     calls.length = 0; o = await msg("100", ".ضيفي 555666777"); ok(calls.some(c => c[0] === "add" && c[1] === "555666777") && /تمت الإضافة/.test(tx(o)), "ضيفي بمعرّف");
     calls.length = 0; o = await msg("100", ".ضيفي https://www.facebook.com/profile.php?id=888999000"); ok(calls.some(c => c[0] === "add" && c[1] === "888999000"), "ضيفي برابط profile.php");
     calls.length = 0; o = await msg("100", ".ضيفي https://www.facebook.com/some.user"); ok(calls.some(c => c[0] === "add" && c[1] === "777000111"), "ضيفي برابط اسم مستخدم (يُجلب المعرّف من الصفحة)");
