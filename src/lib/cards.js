@@ -1,3 +1,4 @@
+require("./fonts");
 // قوالب الصور مرسومة بالكود (SVG) — النصوص عربية (خط DejaVu Sans يدعم العربية)
 const fs = require("fs");
 const path = require("path");

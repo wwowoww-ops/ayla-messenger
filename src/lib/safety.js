@@ -72,6 +72,7 @@ const typingDelay = text => FAST ? 0 : Math.min(3500, 400 + String(text || "").l
 
 // حد للأفعال الإدارية: يرجع false إذا تجاوز الحد
 function allowAction() {
+    if (FAST) return true; // الاختبارات فقط
     const now = Date.now();
     while (actionTimes.length && now - actionTimes[0] > 60000) actionTimes.shift();
     if (actionTimes.length >= ACTION_PER_MIN) return false;

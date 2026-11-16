@@ -1,3 +1,4 @@
+require("./src/lib/fonts");
 // نقطة الدخول: دخول بالـ appstate مع تقليل تسجيلات الدخول (حفظ الجلسة المحدَّثة + حارس حلقة إعادة التشغيل).
 const fs = require("fs");
 const path = require("path");

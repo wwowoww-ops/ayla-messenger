@@ -1,23 +1,33 @@
-// خروج عضو: توديع (يميّز الخروج من الطرد) + منع الخروج (يعيد من خرج بنفسه) إن فُعِّل
+// خروج عضو: منع الخروج (يعيد من خرج بنفسه، مفعّل افتراضيًا) ثم التوديع (يميّز الخروج من الطرد)
 const { isOn } = require("../lib/toggle");
 const safety = require("../lib/safety");
+const L = "━━━━━━━━━━━━━━━━━━";
 module.exports = {
     name: "leave", types: ["log:unsubscribe"],
     async onEvent(ctx, event) {
-        const { api, store, perms } = ctx;
+        const { api, store } = ctx;
         const threadID = String(event.threadID);
         const left = String((event.logMessageData && event.logMessageData.leftParticipantFbId) || "");
         const me = String(api.getCurrentUserID());
         if (!left || left === me) return;
         const voluntary = String(event.author || "") === left;
         const name = (await ctx.nameOf(left)).split(" ")[0];
+        const p = ctx.prefix || "";
 
-        if (voluntary && isOn(store, "antiout", threadID, false) && !perms.isOwner(left) && safety.allowAction()) {
-            const ok = await new Promise(res => api.addUserToGroup(left, threadID, e => res(!e)));
-            if (ok) return ctx.send(ctx.mention(["🌸 رجّعنا ", { id: left, name }, " للمجموعة، ما في خروج بهالسهولة 😄"]));
-            // فشلت الإعادة (حظر أو إعدادات خصوصية): نكمل بالتوديع العادي
+        if (voluntary && isOn(store, "antiout", threadID, true)) {
+            if (!safety.allowAction()) console.error("[منع الخروج] تجاوزتُ حد الأفعال المؤقت، لم أُعد " + left);
+            else {
+                const err = await new Promise(res => api.addUserToGroup(left, threadID, e => res(e || null)));
+                if (!err) return ctx.send(ctx.mention(["🌸 ما في خروج بهالسهولة!\n" + L + "\n👤 ", { id: left, name }, "\n🔁 تمت إعادته إلى المجموعة\n📌 لإيقاف هذه الميزة اكتب: " + p + "منع_الخروج\n" + L + "\n😄 البيت بيتك، تعال وقت ما تشاء"]));
+                console.error("[منع الخروج] فشلت إعادة " + left + ":", err && (err.message || err.error || err));
+                await ctx.send("⚠️ حاولت إعادة " + name + " لكن لم أنجح\n" + L + "\n↳ غالبًا أنه حظر البوت، أو إعداداته تمنع الإضافة، أو المجموعة تتطلب موافقة الأدمن.");
+            }
         }
         if (!isOn(store, "farewell", threadID, true)) return;
-        return ctx.send(voluntary ? "👋 " + name + " غادر المجموعة. نتمنى له التوفيق 🌸" : "🚪 " + name + " خرج من المجموعة (بقرار من الإدارة).");
+        const info = await api.getThreadInfo(threadID).catch(() => null);
+        const count = info && Array.isArray(info.participantIDs) ? info.participantIDs.length : 0;
+        const tail = count ? "\n👥 عدد الأعضاء الآن: " + count : "";
+        if (voluntary) return ctx.send("👋 وداعًا يا " + name + "\n" + L + "\n🚪 غادر المجموعة بنفسه" + tail + "\n" + L + "\n🌸 نتمنى له التوفيق أينما ذهب، وأبوابنا مفتوحة له دائمًا.");
+        return ctx.send("🚪 تم إخراج " + name + " من المجموعة\n" + L + "\n🛡️ بقرار من الإدارة" + tail + "\n" + L + "\n📌 نرجو من الجميع الالتزام بقوانين المجموعة.");
     }
 };

@@ -10,7 +10,7 @@ const HEADS = {
 const FOOTER = "⌬ ━━━━━━━━━━━━ ⌬";
 const TOP = "╭━━━━━━━━━━━━━━━━╮", BOTTOM = "╰━━━━━━━━━━━━━━━━╯";
 const head = cat => HEADS[cat] || HEADS.default;
-const isDecorated = b => /^\s*(⌬|╭)/.test(b);
+const isDecorated = b => /^\s*(⌬|╭|✦|◈)/.test(b);
 
 // يضيف الهيدر لنص أو لرسالة فيها منشن (ويزحزح مواضع المنشن). لا يغيّر الرسائل المزخرفة أصلًا.
 function withHeader(m, cat) {

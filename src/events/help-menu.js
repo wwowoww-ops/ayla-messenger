@@ -22,7 +22,7 @@ module.exports = {
         if (/^(رجوع|back|0)$/.test(q)) out = menu.mainMenu();
         else {
             const cat = menu.find(body);
-            if (!cat) out = ui.TOP + "\n𝗔𝗬𝗟𝗔          〢       تنبيه\n" + ui.BOTTOM + "\n⚠️ الاختيار غير صحيح\n↳ رد برقم الفئة من ❶ إلى ❺\n↳ أو اكتب اسم الفئة\n" + ui.TOP + "\nحاول مرة أخرى\n" + ui.BOTTOM;
+            if (!cat) out = "✦━━━━ ◈ آيلا ◈ ━━━━✦\n      ⟡ تنبيه ⟡\n✦━━━━━━━━━━━━━━━━━━✦\n⚠️ الاختيار غير صحيح\n↳ رُدّ برقم الفئة من ❶ إلى ❺\n↳ أو اكتب اسم الفئة\n✦━━━━━━━━━━━━━━━━━━✦";
             else out = menu.categoryMenu(cat, menu.namesOf(ctx.loader, cat.id));
         }
         const info = await reply(out);
