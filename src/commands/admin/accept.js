@@ -7,7 +7,7 @@ const nameOf = async (ctx, id) => { try { return await ctx.nameOf(id); } catch (
 const reason = e => { const m = String((e && e.message) || e || ""); return /permission|admin/i.test(m) ? "ليست لدي صلاحية كافية، تأكد أنني أدمن." : /block/i.test(m) ? "المستخدم محظور أو حظر البوت." : (m || "خطأ غير معروف"); };
 
 module.exports = {
-    name: "قبول", aliases: ["accept", "طلبات"], level: 1, scope: "group", cooldown: 5,
+    name: "قبول", aliases: ["accept"], level: 1, scope: "group", cooldown: 5,
     description: "عرض طلبات الانضمام المعلّقة وقبولها (واحد أو الكل)", usage: "قبول | قبول <رقم> | قبول الكل",
     async run(ctx) {
         const tid = String(ctx.event.threadID), p = ctx.prefix;
