@@ -88,6 +88,13 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
         o = await msg("100", ".بروفايلك", { type: "message_reply", messageReply: { messageID: "r1", attachments: [{ type: "photo", url: "http://127.0.0.1:" + port + "/a.png" }] } }); ok(/للمطوّر/.test(tx(o)), "بروفايلك للمطوّر فقط");
         srv.close();
     }
+    {
+        const A = require("../src/core/appstate");
+        const ce = A.normalize(JSON.stringify([{ name: "c_user", value: "100", domain: "www.facebook.com" }, { name: "xs", value: "a%3Ab" }]));
+        ok(ce && ce[0].key === "c_user" && ce[0].domain === ".facebook.com" && A.hasSession(ce), "appstate: تصدير Cookie-Editor يُحوَّل");
+        ok(A.hasSession(A.normalize("c_user=100; xs=a%3Ab; fr=zz")), "appstate: نص Cookie مباشر");
+        ok(A.normalize("[]") === null && !A.hasSession(A.normalize("c_user=1")), "appstate: الفارغ والناقص مرفوضان");
+    }
     o = await msg("200", ".ابتايم"); ok(/مـدة الـتـشـغـيـل/.test(tx(o)) && /Heap/.test(tx(o)) && /الأوامر المستخدمة/.test(tx(o)), "ابتايم مفصّل");
     o = await msg("200", ".صراحة"); ok(/^⌬ ━━ 𝗔𝗬𝗟𝗔 FUN ━━ ⌬/.test(tx(o)), "هيدر تلقائي لكل رد");
     // ---- صلاحيات ----

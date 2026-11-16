@@ -11,10 +11,13 @@ const { dispatch } = require("./src/core/dispatcher");
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function readSource() {
+    const A = require("./src/core/appstate");
     if (process.env.APPSTATE) {
-        try { return JSON.parse(process.env.APPSTATE); } catch (e) { console.error("APPSTATE في البيئة ليس JSON صالحًا"); }
+        const n = A.normalize(process.env.APPSTATE);
+        if (n) return n;
+        console.error("APPSTATE في البيئة غير مفهوم: ضع JSON من إضافة Cookie-Editor أو نص الكوكيز c_user=...; xs=...");
     }
-    try { return JSON.parse(fs.readFileSync(path.resolve(cfg.appStatePath), "utf8")); } catch (e) { return null; }
+    try { return A.normalize(fs.readFileSync(path.resolve(cfg.appStatePath), "utf8")); } catch (e) { return null; }
 }
 
 // الجلسة المحدَّثة (الكوكيز تتجدد أثناء التشغيل) تُحفظ في التخزين، فلا يُطلب تسجيل دخول جديد بعد كل إعادة تشغيل.
@@ -56,6 +59,7 @@ function idleDead(info) {
 
 async function main() {
     const source = readSource();
+    if (source && !require("./src/core/appstate").hasSession(source)) { console.error("الكوكيز ناقصة: لا بد من وجود c_user و xs على الأقل (انسخ كوكيز facebook.com كاملة)."); process.exit(1); }
     if (!source || (Array.isArray(source) && !source.length)) { console.error("appstate غير موجود أو فارغ. ضع الكوكيز في المتغير APPSTATE (الأفضل) أو في الملف appstate.json."); process.exit(1); }
     if (!cfg.owners.length) console.warn("[تنبيه] لم تُحدَّد معرّفات المطوّرين (owners)، فلن تعمل أوامر المطوّر.");
     if (!cfg.aiKey) console.warn("[تنبيه] لا يوجد aiKey، فآيلا الذكية معطّلة.");
