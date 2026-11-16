@@ -14,7 +14,15 @@ async function fetchBuf(url, ms) {
     if (buf.length > 15 * 1024 * 1024) throw new Error("too big");
     return buf;
 }
-const valid = async b => { try { const m = await sharp(b).metadata(); return !!(m.width && m.width >= 30); } catch (e) { return false; } };
+// صورة صالحة: قابلة للقراءة وليست فارغة (بيضاء/رمادية موحّدة، وهي ما يعيده فيسبوك أحيانًا بدل صورة الشخص)
+const valid = async b => {
+    try {
+        const m = await sharp(b).metadata();
+        if (!(m.width && m.width >= 30)) return false;
+        const st = await sharp(b).removeAlpha().stats();
+        return st.channels.some(c => c.stdev > 8);
+    } catch (e) { return false; }
+};
 
 const esc = s => String(s).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
 
@@ -31,14 +39,13 @@ async function avatar(api, uid, name, size) {
     size = size || 512;
     const key = uid + ":" + size;
     if (avCache.has(key)) return avCache.get(key);
-    const urls = [];
-    if (cfg.avatarToken) urls.push("https://graph.facebook.com/" + uid + "/picture?width=" + size + "&height=" + size + "&access_token=" + encodeURIComponent(cfg.avatarToken));
-    urls.push("https://graph.facebook.com/" + uid + "/picture?width=" + size + "&height=" + size);
     let buf = null;
-    for (const u of urls) { try { const b = await fetchBuf(u); if (await valid(b)) { buf = b; break; } } catch (e) { /* التالي */ } }
-    if (!buf) {
-        try { const info = await api.getUserInfo(uid); const x = info && (info[uid] || info); const u = x && (x.thumbSrc || x.profilePicture); if (u) { const b = await fetchBuf(u); if (await valid(b)) buf = b; } } catch (e) { /* التالي */ }
-    }
+    const tryUrl = async u => { try { const b = await fetchBuf(u); if (await valid(b)) { buf = b; } } catch (e) { /* التالي */ } };
+    // 1) رابط الصورة من جلسة الحساب نفسها (الأوثق عادةً) 2) Graph برمز 3) Graph عام
+    try { const info = await api.getUserInfo(uid); const x = info && (info[uid] || info); const u = x && (x.thumbSrc || x.profilePicture); if (u) await tryUrl(u); } catch (e) { /* التالي */ }
+    if (!buf && cfg.avatarToken) await tryUrl("https://graph.facebook.com/" + uid + "/picture?width=" + size + "&height=" + size + "&access_token=" + encodeURIComponent(cfg.avatarToken));
+    if (!buf) await tryUrl("https://graph.facebook.com/" + uid + "/picture?width=" + size + "&height=" + size);
+    if (!buf) console.error("[صورة] تعذّر جلب صورة الملف الشخصي لـ " + uid + " — سأستعمل حرفًا ملوّنًا");
     if (!buf) buf = await placeholder(name, size);
     avCache.set(key, buf); if (avCache.size > 100) avCache.delete(avCache.keys().next().value);
     return buf;
