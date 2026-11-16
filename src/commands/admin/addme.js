@@ -7,16 +7,18 @@ const add = (api, uid, tid) => new Promise((res, rej) => api.addUserToGroup(Stri
 
 // يستخرج معرّفًا رقميًا من نص: رقم مباشر، أو رابط فيه المعرّف، أو رابط باسم مستخدم (نجلب الصفحة بجلسة البوت)
 async function resolveId(api, text) {
-    const t = String(text || "").trim();
+    const t = String(text || "").replace(/[\s"'“”‘’«»<>\[\]()،,؛;]+$/g, "").replace(/^[\s"'“”‘’«»<>\[\]()]+/g, "").trim();
     if (/^\d{5,}$/.test(t)) return t;
-    const m = t.match(/https?:\/\/[^\s]+/i);
+    const m = t.match(/https?:\/\/[^\s"'“”<>]+/i);
     if (!m) return null;
     let u; try { u = new URL(m[0]); } catch (e) { return null; }
     if (!HOST.test(u.hostname)) return null; // لا نطلب إلا مواقع فيسبوك
     const direct = u.searchParams.get("id") || u.searchParams.get("fbid") || (u.pathname.match(/\/(?:user|people\/[^/]+|profile)\/(\d{5,})/) || [])[1];
     if (direct && /^\d{5,}$/.test(direct)) return direct;
     try {
-        const html = await web.get("https://www.facebook.com" + u.pathname + (u.pathname.includes("profile.php") ? u.search : ""), web.cookieOf(api));
+        let html = ""; const url = "https://www.facebook.com" + u.pathname + (u.pathname.includes("profile.php") ? u.search : "");
+        if (typeof api.httpGet === "function") { try { html = String(await api.httpGet(url)); } catch (e) { html = ""; } }
+        if (!html) html = await web.get(url, web.cookieOf(api));
         for (const re of [/"userID":"(\d{5,})"/, /"entity_id":"(\d{5,})"/, /fb:\/\/profile\/(\d{5,})/, /"profile_id":"?(\d{5,})/, /owner_id[^\d]{1,6}(\d{5,})/]) { const x = html.match(re); if (x) return x[1]; }
     } catch (e) { console.error("[ضيفي] تعذّر قراءة الرابط:", e && e.message); }
     return null;

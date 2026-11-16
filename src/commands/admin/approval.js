@@ -17,8 +17,7 @@ module.exports = {
         if (!(await ctx.perms.botIsAdmin(ctx.api, tid))) return ctx.reply("⚠️ لا أملك صلاحية الأدمن في هذه المجموعة\n↳ اجعلني أدمن حتى أستطيع تغيير هذا الإعداد.");
         if (!safety.allowAction()) return ctx.reply("⏳ نفّذتُ أفعالًا إدارية كثيرة مؤخرًا\n↳ أنتظر دقيقة لحماية الحساب، ثم أعد المحاولة.");
         try {
-            const cookie = web.cookieOf(ctx.api), token = await web.dtsg(cookie);
-            await web.post("https://www.facebook.com/messaging/set_approval_mode/?dpr=1", { set_mode: want ? "1" : "0", thread_fbid: tid, fb_dtsg: token, jazoest: "25436" }, cookie);
+            await web.apiPost(ctx.api, "https://www.facebook.com/messaging/set_approval_mode/?dpr=1", { set_mode: want ? "1" : "0", thread_fbid: tid });
             const after = isOn(await info(ctx.api, tid)); // لا نصدّق الرد، نتحقق من الحالة الفعلية
             if (after !== want) throw new Error("فيسبوك لم يغيّر الحالة");
             return ctx.reply(want ? "✅ تم تفعيل موافقة الأدمن\n↳ أي عضو جديد سيدخل قائمة الطلبات أولًا.\n↳ استعمل " + p + "قبول لقبول الطلبات." : "✅ تم إيقاف موافقة الأدمن\n↳ يستطيع الأعضاء الجدد الانضمام مباشرة.");

@@ -24,6 +24,8 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     };
     const api = {
         getAppState: () => [{ key: "c_user", value: "1" }, { key: "xs", value: "2" }],
+        refreshFb_dtsg: async () => ({}),
+        httpPost: async (url, form) => { if (String(url).includes("set_approval_mode")) fbState.approval = String(form.set_mode) === "1"; return "{}"; },
         getCurrentUserID: () => "999",
         sendMessage: (m, t, cb, r) => { out.push({ m, t, r }); cb && cb(null, { messageID: "x" }); },
         getThreadHistory: async (tid, n, before) => { const now = Date.now(); if (before !== undefined && before < now - 9 * 86400000) return []; if (before !== undefined) return [{ messageID: "h9", senderID: "100", body: "قديمة", timestamp: now - 10 * 86400000 }]; return [{ messageID: "h1", senderID: "100", body: "مرحبا", timestamp: now - 1000 }, { messageID: "h2", senderID: "200", body: "", attachments: [{ type: "photo" }], timestamp: now - 2000 }, { messageID: "h3", senderID: "100", body: "تاني", timestamp: now - 3000 }, { messageID: "h4", senderID: "100", body: "أمس", timestamp: now - 30 * 3600000 }]; },
@@ -113,6 +115,8 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     calls.length = 0; o = await msg("100", ".ضيفي 555666777"); ok(calls.some(c => c[0] === "add" && c[1] === "555666777") && /تمت الإضافة/.test(tx(o)), "ضيفي بمعرّف");
     calls.length = 0; o = await msg("100", ".ضيفي https://www.facebook.com/profile.php?id=888999000"); ok(calls.some(c => c[0] === "add" && c[1] === "888999000"), "ضيفي برابط profile.php");
     calls.length = 0; o = await msg("100", ".ضيفي https://www.facebook.com/some.user"); ok(calls.some(c => c[0] === "add" && c[1] === "777000111"), "ضيفي برابط اسم مستخدم (يُجلب المعرّف من الصفحة)");
+    calls.length = 0; o = await msg("100", '.ضيفي "555666778"'); ok(calls.some(c => c[0] === "add" && c[1] === "555666778"), "ضيفي بمعرّف بين علامتي اقتباس");
+    calls.length = 0; o = await msg("100", '.ضيفي "https://www.facebook.com/profile.php?id=888999001"'); ok(calls.some(c => c[0] === "add" && c[1] === "888999001"), "ضيفي برابط بين علامتي اقتباس");
     calls.length = 0; o = await msg("100", ".ضيفي https://evil.example.com/x"); ok(!calls.length && /تعذّر استخراج/.test(tx(o)), "ضيفي يرفض الروابط الخارجية");
     o = await msg("200", ".ضيفي 555666777"); ok(/أدمن المجموعة/.test(tx(o)), "ضيفي للأدمن والمطوّر فقط");
     o = await msg("100", ".بادئة بدون"); ok(/«بدون»/.test(tx(o)), "بادئة بدون تُحفظ");
