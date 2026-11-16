@@ -180,6 +180,8 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     o = await msg("100", ".بانكاي @محمد", { mentions: { 200: "@محمد" } }); ok(/بانكاي/.test(tx(o)) && calls.some(c => c[0] === "kick" && c[1] === "200"), "بانكاي: مشهد + طرد");
     o = await msg("100", ".بانكاي @ابو", { mentions: { 900: "@ابو" } }); ok(!calls.some(c => c[0] === "kick"), "بانكاي لا يطرد المطوّر");
     const addCalls = []; api.addUserToGroup = (u, t, cb) => { addCalls.push(u); cb && cb(); };
+    calls.length = 0; dispatch(api, { type: "event", logMessageType: "log:subscribe", threadID: "G9", isGroup: true, author: "100", logMessageData: { addedParticipants: [{ userFbId: "999", fullName: "آيلا" }] } }); await new Promise(r => setTimeout(r, 150));
+    ok(calls.some(c => c[0] === "nick" && c[1] === "AYLA | 🌸" && c[2] === "999"), "تغيير كنية البوت عند دخوله المجموعة");
     const leaveEv = (author, left) => { out = []; dispatch(api, { type: "event", logMessageType: "log:unsubscribe", threadID: "G9", isGroup: true, author, logMessageData: { leftParticipantFbId: left } }); return new Promise(r => setTimeout(() => r(out), 80)); };
     o = await leaveEv("200", "200"); ok(addCalls.includes("200") && /تمت إعادته/.test(tx(o)), "منع الخروج مفعّل افتراضيًا ويعيد حتى المطوّر");
     addCalls.length = 0; await msg("100", ".منع_الخروج ايقاف", { threadID: "G9" });

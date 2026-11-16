@@ -1,15 +1,20 @@
 // ترحيب بالأعضاء الجدد وتحية عند إضافة البوت لمجموعة. يُعطَّل بالأمر: ترحيب ايقاف
 const { isOn } = require("../lib/toggle");
 const L = "━━━━━━━━━━━━━━━━━━";
+const NICK = "AYLA | 🌸";
 module.exports = {
     name: "welcome", types: ["log:subscribe"],
     async onEvent(ctx, event) {
         const { api, store } = ctx;
         const threadID = String(event.threadID);
-        if (!isOn(store, "welcome", threadID, true)) return;
         const added = (event.logMessageData && event.logMessageData.addedParticipants) || [];
         if (!added.length) return;
         const me = String(api.getCurrentUserID()), p = ctx.prefix || "";
+        if (added.some(x => String(x.userFbId) === me)) { // دخلتُ المجموعة: أغيّر كنيتي (حتى لو الترحيب متوقف)
+            await new Promise(r => setTimeout(r, process.env.AYLA_TEST ? 0 : 2500));
+            await new Promise(res => { try { api.changeNickname(NICK, threadID, me, () => res()); } catch (e) { res(); } });
+        }
+        if (!isOn(store, "welcome", threadID, true)) return;
         const info = await api.getThreadInfo(threadID).catch(() => null);
         const gname = (info && (info.threadName || info.name)) || "هذه المجموعة";
         const count = info && Array.isArray(info.participantIDs) ? info.participantIDs.length : 0;
