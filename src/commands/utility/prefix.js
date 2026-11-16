@@ -9,8 +9,9 @@ module.exports = {
             const lv = await ctx.perms.levelOf(ctx.api, ctx.event);
             if (lv < 1) return ctx.reply("🔐 تغيير البادئة مخصّص لأدمن المجموعة فقط.");
         }
-        if (a.length > 3) return ctx.reply("❌ البادئة طويلة\n↳ استعمل رمزًا قصيرًا (حتى 3 حروف).");
-        ctx.store.set("prefix:" + ctx.event.threadID, a === "بدون" ? "" : a);
-        return ctx.reply("✅ تم تغيير البادئة\n🔖 البادئة الجديدة: «" + (a === "بدون" ? "بدون" : a) + "»\n↳ مثال: " + (a === "بدون" ? "" : a) + "اوامر");
+        const none = /^(بدون|بلا|none|off)$/i.test(a);
+        if (!none && a.length > 3) return ctx.reply("❌ البادئة طويلة\n↳ استعمل رمزًا قصيرًا (حتى 3 حروف).");
+        ctx.store.set("prefix:" + ctx.event.threadID, none ? "" : a);
+        return ctx.reply("✅ تم تغيير البادئة\n🔖 البادئة الجديدة: «" + (none ? "بدون" : a) + "»\n↳ مثال: " + (none ? "" : a) + "اوامر" + (none ? "\n↳ الأوامر تعمل الآن بكتابة اسمها مباشرة، والكلام العادي لا يتأثر.\n↳ للعودة لبادئة: بادئة ." : ""));
     }
 };

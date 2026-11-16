@@ -14,11 +14,20 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
 
     let out = [], calls = [];
     const people = { 100: "سارة أحمد", 200: "محمد علي", 300: "ليلى", 900: "ابو", 999: "آيلا" };
+    const fbState = { approval: false };
+    const origFetch = global.fetch;
+    global.fetch = async (url, o) => {
+        url = String(url);
+        if (url.includes("set_approval_mode")) { fbState.approval = /set_mode=1/.test(String(o && o.body)); return { text: async () => "{}" }; }
+        if (url.startsWith("https://www.facebook.com/")) return { text: async () => '"DTSGInitialData",[],{"token":"tok123"} "userID":"777000111"' };
+        return origFetch(url, o);
+    };
     const api = {
+        getAppState: () => [{ key: "c_user", value: "1" }, { key: "xs", value: "2" }],
         getCurrentUserID: () => "999",
         sendMessage: (m, t, cb, r) => { out.push({ m, t, r }); cb && cb(null, { messageID: "x" }); },
         getThreadHistory: async (tid, n, before) => { const now = Date.now(); if (before !== undefined && before < now - 9 * 86400000) return []; if (before !== undefined) return [{ messageID: "h9", senderID: "100", body: "قديمة", timestamp: now - 10 * 86400000 }]; return [{ messageID: "h1", senderID: "100", body: "مرحبا", timestamp: now - 1000 }, { messageID: "h2", senderID: "200", body: "", attachments: [{ type: "photo" }], timestamp: now - 2000 }, { messageID: "h3", senderID: "100", body: "تاني", timestamp: now - 3000 }, { messageID: "h4", senderID: "100", body: "أمس", timestamp: now - 30 * 3600000 }]; },
-        getThreadInfo: async () => ({ approvalQueue: [{ requesterID: "300" }, { requesterID: "400" }], adminIDs: [{ id: "900" }, { id: "999" }, { id: "100" }], participantIDs: Object.keys(people), threadName: "اختبار", userInfo: Object.entries(people).map(([id, name]) => ({ id, name })) }),
+        getThreadInfo: async () => ({ approvalMode: fbState.approval, approvalQueue: [{ requesterID: "300" }, { requesterID: "400" }], adminIDs: [{ id: "900" }, { id: "999" }, { id: "100" }], participantIDs: Object.keys(people), threadName: "اختبار", userInfo: Object.entries(people).map(([id, name]) => ({ id, name })) }),
         getUserInfo: async id => ({ [id]: { name: people[id] || "مجهول", gender: id === "100" || id === "300" ? 1 : 2 } }),
         addUserToGroup: (u, t, cb) => { calls.push(["add", u]); cb && cb(); },
         removeUserFromGroup: (u, t, cb) => { calls.push(["kick", u]); cb && cb(); },
@@ -95,6 +104,21 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
         ok(A.hasSession(A.normalize("c_user=100; xs=a%3Ab; fr=zz")), "appstate: نص Cookie مباشر");
         ok(A.normalize("[]") === null && !A.hasSession(A.normalize("c_user=1")), "appstate: الفارغ والناقص مرفوضان");
     }
+    // موافقة وضيفي وبادئة بدون
+    o = await msg("100", ".موافقة"); ok(/متوقفة/.test(tx(o)), "موافقة: الحالة متوقفة");
+    o = await msg("100", ".موافقة تشغيل"); ok(fbState.approval === true && /تم تفعيل موافقة الأدمن/.test(tx(o)), "موافقة تشغيل تتحقق من الحالة الفعلية");
+    o = await msg("100", ".موافقة تشغيل"); ok(/مفعّلة بالفعل/.test(tx(o)), "موافقة: مفعّلة بالفعل");
+    o = await msg("100", ".موافقة ايقاف"); ok(fbState.approval === false && /تم إيقاف/.test(tx(o)), "موافقة ايقاف");
+    o = await msg("200", ".موافقة"); ok(/أدمن المجموعة/.test(tx(o)), "موافقة للأدمن فقط");
+    calls.length = 0; o = await msg("100", ".ضيفي 555666777"); ok(calls.some(c => c[0] === "add" && c[1] === "555666777") && /تمت الإضافة/.test(tx(o)), "ضيفي بمعرّف");
+    calls.length = 0; o = await msg("100", ".ضيفي https://www.facebook.com/profile.php?id=888999000"); ok(calls.some(c => c[0] === "add" && c[1] === "888999000"), "ضيفي برابط profile.php");
+    calls.length = 0; o = await msg("100", ".ضيفي https://www.facebook.com/some.user"); ok(calls.some(c => c[0] === "add" && c[1] === "777000111"), "ضيفي برابط اسم مستخدم (يُجلب المعرّف من الصفحة)");
+    calls.length = 0; o = await msg("100", ".ضيفي https://evil.example.com/x"); ok(!calls.length && /تعذّر استخراج/.test(tx(o)), "ضيفي يرفض الروابط الخارجية");
+    o = await msg("200", ".ضيفي 555666777"); ok(/أدمن المجموعة/.test(tx(o)), "ضيفي للأدمن والمطوّر فقط");
+    o = await msg("100", ".بادئة بدون"); ok(/«بدون»/.test(tx(o)), "بادئة بدون تُحفظ");
+    o = await msg("100", "اوامر"); ok(/❶/.test(tx(o)), "بدون بادئة: اسم الأمر يعمل");
+    o = await msg("100", "كلام عادي هنا"); ok(!/أمر غير معروف/.test(tx(o)), "بدون بادئة: الكلام العادي لا يُعدّ أمرًا");
+    o = await msg("100", "بادئة ."); ok(/«\.»/.test(tx(o)), "استرجاع البادئة بعد «بدون»");
     o = await msg("200", ".ابتايم"); ok(/مـدة الـتـشـغـيـل/.test(tx(o)) && /Heap/.test(tx(o)) && /الأوامر المستخدمة/.test(tx(o)), "ابتايم مفصّل");
     o = await msg("200", ".صراحة"); ok(/^⌬ ━━ 𝗔𝗬𝗟𝗔 FUN ━━ ⌬/.test(tx(o)), "هيدر تلقائي لكل رد");
     // ---- صلاحيات ----

@@ -71,14 +71,18 @@ async function handleMessage(api, event) {
 
     // أمر ببادئة؟
     const prefix = ctx.prefix;
-    const prefixed = prefix && body.startsWith(prefix);
-    let cmd = null, name = "";
-    if (prefixed) {
-        const parts = body.slice(prefix.length).trim().split(/\s+/);
+    let prefixed = false, cmd = null, name = "";
+    const parts = (prefix ? body.slice(prefix.length) : body).trim().split(/\s+/);
+    if (prefix && body.startsWith(prefix)) {
+        prefixed = true;
         name = parts.shift() || "";
-        ctx.args = parts;
-        ctx.rest = parts.join(" ");
+        ctx.args = parts; ctx.rest = parts.join(" ");
         cmd = loader.commands.get(norm(name)) || null;
+    } else if (!prefix) {
+        // وضع «بدون بادئة»: الكلمة الأولى إن كانت اسم أمر معروف فهي أمر، وإلا فهي كلام عادي (لا اقتراحات ولا أخطاء)
+        const first = parts[0] || "";
+        const c = first ? loader.commands.get(norm(first)) : null;
+        if (c) { prefixed = true; cmd = c; name = parts.shift(); ctx.args = parts; ctx.rest = parts.join(" "); }
     }
 
     // خطّافات "pre" تعمل على كل الرسالة (مثل الكتم) قبل أي أمر؛ وبقية الخطّافات (آيلا...) تعمل فقط حين لا يوجد أمر
