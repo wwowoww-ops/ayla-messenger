@@ -28,7 +28,8 @@ async function levelOf(api, event) {
 
 async function botIsAdmin(api, threadID) {
     const me = String(api.getCurrentUserID());
-    return (await threadAdmins(api, String(threadID))).has(me);
+    if ((await threadAdmins(api, String(threadID))).has(me)) return true;
+    return (await threadAdmins(api, String(threadID), true)).has(me); // قد تكون الذاكرة قديمة: أعد القراءة قبل أن أقول «لست أدمن»
 }
 
 const invalidate = threadID => adminCache.delete(String(threadID));
