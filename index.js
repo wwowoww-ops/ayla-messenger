@@ -57,10 +57,21 @@ function idleDead(info) {
     setInterval(() => console.error("⛔ ما زلت بانتظار appstate جديد."), 6 * 3600 * 1000);
 }
 
+// الدخول بالإيميل/كلمة السر (اختياري، من متغيرات البيئة فقط ولا يُحفظ في المستودع)
+function readCreds() {
+    const email = (process.env.FB_EMAIL || "").trim(), password = process.env.FB_PASSWORD || "";
+    return email && password ? { email, password, twofactor: (process.env.FB_2FA_SECRET || "").replace(/\s+/g, "") } : null;
+}
+function writeCredConfig(c) { // المكتبة تقرأ سر 2FA من fca-config.json (مُتجاهَل في git)
+    try { fs.writeFileSync(path.join(process.cwd(), "fca-config.json"), JSON.stringify({ credentials: { email: c.email, password: c.password, twofactor: c.twofactor } })); } catch (e) { /* لا شيء */ }
+}
+
 async function main() {
     const source = readSource();
-    if (source && !require("./src/core/appstate").hasSession(source)) { console.error("الكوكيز ناقصة: لا بد من وجود c_user و xs على الأقل (انسخ كوكيز facebook.com كاملة)."); process.exit(1); }
-    if (!source || (Array.isArray(source) && !source.length)) { console.error("appstate غير موجود أو فارغ. ضع الكوكيز في المتغير APPSTATE (الأفضل) أو في الملف appstate.json."); process.exit(1); }
+    const creds = readCreds();
+    if (source && !creds && !require("./src/core/appstate").hasSession(source)) { console.error("الكوكيز ناقصة: لا بد من وجود c_user و xs على الأقل (انسخ كوكيز facebook.com كاملة)."); process.exit(1); }
+    const noSource = !source || (Array.isArray(source) && !source.length) || !require("./src/core/appstate").hasSession(source);
+    if (noSource && !creds) { console.error("appstate غير موجود أو فارغ. ضع الكوكيز في المتغير APPSTATE (الأفضل) أو في الملف appstate.json."); process.exit(1); }
     if (!cfg.owners.length) console.warn("[تنبيه] لم تُحدَّد معرّفات المطوّرين (owners)، فلن تعمل أوامر المطوّر.");
     if (!cfg.aiKey) console.warn("[تنبيه] لا يوجد aiKey، فآيلا الذكية معطّلة.");
 
@@ -68,19 +79,40 @@ async function main() {
     await crashLoopGuard();
     loader.loadAll(path.join(__dirname, "src"));
 
-    const { state, hash, fromStore } = chooseState(source);
-    const dead = store.get("dead", null);
-    if (dead && dead.hash === hash) return idleDead(dead);
-    console.log("[آيلا] الجلسة من " + (fromStore ? "التخزين (محدَّثة)" : "المصدر"));
-
     const login = require("fca-eryxenx");
-    login({ appState: state }, { listenEvents: true, selfListen: false, autoMarkRead: true, online: true }, (err, api) => {
-        if (err) {
-            const why = String(err.error || err.message || err);
-            console.error("[" + new Date().toISOString() + "] فشل تسجيل الدخول:", why);
-            if (AUTH_ERR.test(why)) return markDead(hash, why).then(() => idleDead(store.get("dead")));
-            return process.exit(1); // خطأ مؤقت (شبكة مثلًا): تُعيد المنصة التشغيل
+    const opts = { listenEvents: true, selfListen: false, autoMarkRead: true, online: true };
+    const doLogin = o => new Promise((res, rej) => login(o, opts, (e, a) => e ? rej(e) : res(a)));
+    const errText = e => String((e && (e.error || e.message)) || e);
+
+    let api = null, hash = "creds", viaCreds = false;
+    if (!noSource) {
+        const ch = chooseState(source); hash = ch.hash;
+        const dead = store.get("dead", null);
+        if (dead && dead.hash === hash && !creds) return idleDead(dead);
+        if (!(dead && dead.hash === hash)) {
+            console.log("[آيلا] الجلسة من " + (ch.fromStore ? "التخزين (محدَّثة)" : "المصدر"));
+            try { api = await doLogin({ appState: ch.state }); }
+            catch (err) {
+                const why = errText(err);
+                console.error("[" + new Date().toISOString() + "] فشل الدخول بالكوكيز:", why);
+                if (AUTH_ERR.test(why)) { await markDead(hash, why); if (!creds) return idleDead(store.get("dead")); }
+                else if (!creds) return process.exit(1); // خطأ مؤقت (شبكة مثلًا): تُعيد المنصة التشغيل
+                else return process.exit(1);
+            }
         }
+    }
+    if (!api) { // الكوكيز غير موجودة أو ميتة: الدخول بالإيميل وكلمة السر (احتياطي)
+        console.log("[آيلا] الدخول بالإيميل وكلمة السر (طريقة احتياطية)…");
+        writeCredConfig(creds);
+        try { api = await doLogin({ email: creds.email, password: creds.password }); viaCreds = true; }
+        catch (err) {
+            const why = errText(err);
+            console.error("[" + new Date().toISOString() + "] فشل الدخول بالإيميل:", why);
+            if (AUTH_ERR.test(why)) { await markDead("creds:" + hash, why); return idleDead(store.get("dead")); }
+            return process.exit(1);
+        }
+    }
+    {
         console.log("[آيلا] تم الدخول. المعرّف: " + api.getCurrentUserID());
         require("./src/lib/safety").bindApi(api); // لإظهار «يكتب...» قبل كل رسالة
         try { api.sessionGuard(path.resolve(cfg.appStatePath), { interval: 3 * 60 * 1000, debounce: 30 * 1000 }); } catch (e) { /* اختياري */ }
@@ -107,7 +139,7 @@ async function main() {
             errors = 0;
             dispatch(api, event);
         });
-    });
+    }
 }
 
 process.on("unhandledRejection", e => console.error("[unhandledRejection]", e && (e.message || e)));

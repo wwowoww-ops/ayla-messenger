@@ -6,3 +6,4 @@ data/*.json
 .env
 config.local.js
 data/tpl/
+fca-config.json
