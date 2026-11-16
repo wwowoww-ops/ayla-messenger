@@ -42,9 +42,9 @@ async function avatar(api, uid, name, size) {
     if (avCache.has(key)) return avCache.get(key);
     let buf = null;
     const tryUrl = async u => { try { const b = await fetchBuf(u); if (await valid(b)) { buf = b; } } catch (e) { /* التالي */ } };
-    // 1) رابط الصورة من جلسة الحساب نفسها (الأوثق عادةً) 2) Graph برمز 3) Graph عام
-    try { const info = await api.getUserInfo(uid); const x = info && (info[uid] || info); const u = x && (x.thumbSrc || x.profilePicture); if (u) await tryUrl(u); } catch (e) { /* التالي */ }
-    if (!buf && cfg.avatarToken) await tryUrl("https://graph.facebook.com/" + uid + "/picture?width=" + size + "&height=" + size + "&access_token=" + encodeURIComponent(cfg.avatarToken));
+    // 1) Graph برمز هينا 2) رابط الصورة من جلسة الحساب 3) Graph عام
+    if (cfg.avatarToken) await tryUrl("https://graph.facebook.com/" + uid + "/picture?width=" + size + "&height=" + size + "&access_token=" + encodeURIComponent(cfg.avatarToken));
+    if (!buf) { try { const info = await api.getUserInfo(uid); const x = info && (info[uid] || info); const u = x && (x.thumbSrc || x.profilePicture); if (u) await tryUrl(u); } catch (e) { /* التالي */ } }
     if (!buf) await tryUrl("https://graph.facebook.com/" + uid + "/picture?width=" + size + "&height=" + size);
     if (!buf) console.error("[صورة] تعذّر جلب صورة الملف الشخصي لـ " + uid + " — سأستعمل حرفًا ملوّنًا");
     if (!buf) buf = await placeholder(name, size);
