@@ -59,8 +59,9 @@ function idleDead(info) {
 
 // الدخول بالإيميل/كلمة السر (اختياري، من متغيرات البيئة فقط ولا يُحفظ في المستودع)
 function readCreds() {
-    const email = (process.env.FB_EMAIL || "").trim(), password = process.env.FB_PASSWORD || "";
-    return email && password ? { email, password, twofactor: (process.env.FB_2FA_SECRET || "").replace(/\s+/g, "") } : null;
+    let f = {}; try { f = JSON.parse(fs.readFileSync(path.join(__dirname, "credentials.json"), "utf8")) || {}; } catch (e) { /* لا ملف */ }
+    const email = String(process.env.FB_EMAIL || f.email || "").trim(), password = String(process.env.FB_PASSWORD || f.password || "");
+    return email && password ? { email, password, twofactor: String(process.env.FB_2FA_SECRET || f.twofactor || "").replace(/\s+/g, "") } : null;
 }
 function writeCredConfig(c) { // المكتبة تقرأ سر 2FA من fca-config.json (مُتجاهَل في git)
     try { fs.writeFileSync(path.join(process.cwd(), "fca-config.json"), JSON.stringify({ credentials: { email: c.email, password: c.password, twofactor: c.twofactor } })); } catch (e) { /* لا شيء */ }
