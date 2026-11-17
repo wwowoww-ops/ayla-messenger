@@ -120,6 +120,7 @@ async function main() {
 
         const saveState = () => { try { const s = api.getAppState(); if (Array.isArray(s) && s.length) store.set("appstate", { state: s, srcHash: hash, at: Date.now() }); } catch (e) { /* لا شيء */ } };
         saveState();
+        if (viaCreds && hash !== "creds") store.del("dead"); // جلسة جديدة سليمة من الإيميل: تُحفَظ وتُستعمل في التشغيل القادم بدل إعادة الدخول بالإيميل كل مرة
         setInterval(saveState, 10 * 60 * 1000);
 
         let errors = 0, dying = false;
@@ -132,7 +133,10 @@ async function main() {
                 if (!dying && /not logged in|checkpoint|login approvals/i.test(msg) && errors >= 3) {
                     dying = true;
                     try { api.stopListening && api.stopListening(); } catch (x) { /* لا شيء */ }
-                    markDead(hash, msg).then(() => idleDead(store.get("dead")));
+                    markDead(hash, msg).then(() => {
+                        if (creds) { console.error("[آيلا] الجلسة انتهت وسأعيد الدخول بالإيميل وكلمة السر…"); setTimeout(() => process.exit(1), 3000); } // تعيد المنصة التشغيل فيدخل بالإيميل
+                        else idleDead(store.get("dead"));
+                    });
                 }
                 return;
             }
