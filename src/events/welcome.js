@@ -11,8 +11,8 @@ module.exports = {
         if (!added.length) return;
         const me = String(api.getCurrentUserID()), p = ctx.prefix || "";
         if (added.some(x => String(x.userFbId) === me)) { // دخلتُ المجموعة: أغيّر كنيتي (حتى لو الترحيب متوقف)
-            await new Promise(r => setTimeout(r, process.env.AYLA_TEST ? 0 : 2500));
-            await new Promise(res => { try { api.changeNickname(NICK, threadID, me, () => res()); } catch (e) { res(); } });
+            // لا ننتظر نتيجة تغيير الكنية: قد لا يعود ردّها أبدًا فيتعطّل الترحيب. نُطلقه بالخلفية بعد مهلة قصيرة.
+            setTimeout(() => { try { const r = api.changeNickname(NICK, threadID, me, () => {}); if (r && r.catch) r.catch(e => console.error("[كنية] فشل تغيير الكنية:", e && (e.message || e))); } catch (e) { console.error("[كنية]", e && e.message); } }, process.env.AYLA_TEST ? 0 : 2500);
         }
         if (!isOn(store, "welcome", threadID, true)) return;
         const info = await api.getThreadInfo(threadID).catch(() => null);
