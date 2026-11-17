@@ -17,7 +17,13 @@ module.exports = {
         if (voluntary && isOn(store, "antiout", threadID, true)) {
             if (!safety.allowAction()) console.error("[منع الخروج] تجاوزتُ حد الأفعال المؤقت، لم أُعد " + left);
             else {
-                const err = await new Promise(res => api.addUserToGroup(left, threadID, e => res(e || null)));
+                let err = await new Promise(res => api.addUserToGroup(left, threadID, e => res(e || null)));
+                if (!err) { // فيسبوك قد لا يُرجع خطأ وهو لم يضف العضو فعلًا: نتحقق من وجوده بعد قليل ولا نصدّق الرد
+                    await new Promise(r => setTimeout(r, process.env.AYLA_TEST ? 0 : 3000));
+                    const ti = await api.getThreadInfo(threadID).catch(() => null);
+                    const inside = ti && Array.isArray(ti.participantIDs) && ti.participantIDs.map(String).includes(left);
+                    if (ti && !inside) err = new Error("لم يظهر العضو في المجموعة بعد الإضافة");
+                }
                 if (!err) return ctx.send(ctx.mention(["🌸 ما في خروج بهالسهولة!\n" + L + "\n👤 ", { id: left, name }, "\n🔁 تمت إعادته إلى المجموعة\n📌 لإيقاف هذه الميزة اكتب: " + p + "منع_الخروج\n" + L + "\n😄 البيت بيتك، تعال وقت ما تشاء"]));
                 console.error("[منع الخروج] فشلت إعادة " + left + ":", err && (err.message || err.error || err));
                 await ctx.send("⚠️ حاولت إعادة " + name + " لكن لم أنجح\n" + L + "\n↳ غالبًا أنه حظر البوت، أو إعداداته تمنع الإضافة، أو المجموعة تتطلب موافقة الأدمن.");

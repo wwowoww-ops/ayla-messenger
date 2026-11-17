@@ -12,7 +12,7 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     const { dispatch } = require("../src/core/dispatcher");
     const T = require("../src/lib/target");
 
-    let out = [], calls = [], lastBot = "", botSeq = 0, uniq = false;
+    let out = [], calls = [], lastBot = "", botSeq = 0, uniq = false, joined = [];
     const people = { 100: "سارة أحمد", 200: "محمد علي", 300: "ليلى", 900: "ابو", 999: "آيلا" };
     const fbState = { approval: false };
     const origFetch = global.fetch;
@@ -29,7 +29,7 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
         getCurrentUserID: () => "999",
         sendMessage: (m, t, cb, r) => { out.push({ m, t, r }); lastBot = uniq ? "bot" + (++botSeq) : "x"; cb && typeof cb === "function" && cb(null, { messageID: lastBot }); },
         getThreadHistory: async (tid, n, before) => { const now = Date.now(); if (before !== undefined && before < now - 9 * 86400000) return []; if (before !== undefined) return [{ messageID: "h9", senderID: "100", body: "قديمة", timestamp: now - 10 * 86400000 }]; return [{ messageID: "h1", senderID: "100", body: "مرحبا", timestamp: now - 1000 }, { messageID: "h2", senderID: "200", body: "", attachments: [{ type: "photo" }], timestamp: now - 2000 }, { messageID: "h3", senderID: "100", body: "تاني", timestamp: now - 3000 }, { messageID: "h4", senderID: "100", body: "أمس", timestamp: now - 30 * 3600000 }]; },
-        getThreadInfo: async () => ({ approvalMode: fbState.approval, approvalQueue: [{ requesterID: "300" }, { requesterID: "400" }], adminIDs: [{ id: "900" }, { id: "999" }, { id: "100" }], participantIDs: Object.keys(people), threadName: "اختبار", userInfo: Object.entries(people).map(([id, name]) => ({ id, name })) }),
+        getThreadInfo: async () => ({ approvalMode: fbState.approval, approvalQueue: [{ requesterID: "300" }, { requesterID: "400" }], adminIDs: [{ id: "900" }, { id: "999" }, { id: "100" }], participantIDs: Object.keys(people).concat(joined), threadName: "اختبار", userInfo: Object.entries(people).map(([id, name]) => ({ id, name })) }),
         getUserInfo: async id => ({ [id]: { name: people[id] || "مجهول", gender: id === "100" || id === "300" ? 1 : 2 } }),
         addUserToGroup: (u, t, cb) => { calls.push(["add", u]); cb && cb(); },
         removeUserFromGroup: (u, t, cb) => { calls.push(["kick", u]); cb && cb(); },
@@ -174,7 +174,7 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     ok(kicked.includes("100") && kicked.includes("200") && kicked.includes("300") && !kicked.includes("900") && !kicked.includes("999"), "نووي يطرد الجميع عدا المطوّر والبوت");
     o = await msg("100", ".بانكاي @محمد", { mentions: { 200: "@محمد" } }); ok(/بانكاي/.test(tx(o)) && calls.some(c => c[0] === "kick" && c[1] === "200"), "بانكاي: مشهد + طرد");
     o = await msg("100", ".بانكاي @ابو", { mentions: { 900: "@ابو" } }); ok(!calls.some(c => c[0] === "kick"), "بانكاي لا يطرد المطوّر");
-    const addCalls = []; api.addUserToGroup = (u, t, cb) => { addCalls.push(u); cb && cb(); };
+    const addCalls = []; api.addUserToGroup = (u, t, cb) => { addCalls.push(u); joined.push(String(u)); cb && cb(); };
     calls.length = 0; dispatch(api, { type: "event", logMessageType: "log:subscribe", threadID: "G9", isGroup: true, author: "100", logMessageData: { addedParticipants: [{ userFbId: "999", fullName: "آيلا" }] } }); await new Promise(r => setTimeout(r, 150));
     ok(calls.some(c => c[0] === "nick" && c[1] === "AYLA | 🌸" && c[2] === "999"), "تغيير كنية البوت عند دخوله المجموعة");
     o = await msg("100", ".قفل"); ok(/تم قفل/.test(tx(o)), "قفل"); o = await msg("200", ".قوانين"); ok(!o.length, "القفل يمنع العضو العادي");
@@ -197,6 +197,7 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     o = await msg("900", ".طلبات"); ok(/طلب جديد/.test(tx(o)), "طلبات تعرض المعلّقة");
     lid = lastBot; o = await msg("900", "قبول 1", { messageReply: { messageID: lid } }); ok(/قُبلت/.test(tx(o)) || out.some(x => x.t === "P1"), "طلبات: قبول");
     o = await msg("100", "قبول 1", { messageReply: { messageID: lid } }); ok(!calls.length, "رد غير المطوّر على قائمة طلبات لا يُنفَّذ"); uniq = false;
+    let addCalls0 = null;
     const leaveEv = (author, left) => { out = []; dispatch(api, { type: "event", logMessageType: "log:unsubscribe", threadID: "G9", isGroup: true, author, logMessageData: { leftParticipantFbId: left } }); return new Promise(r => setTimeout(() => r(out), 80)); };
     o = await leaveEv("200", "200"); ok(addCalls.includes("200") && /تمت إعادته/.test(tx(o)), "منع الخروج مفعّل افتراضيًا ويعيد حتى المطوّر");
     addCalls.length = 0; await msg("100", ".منع_الخروج ايقاف", { threadID: "G9" });
@@ -205,6 +206,7 @@ const srv = http.createServer((q, s) => { let b = ""; q.on("data", d => b += d);
     await msg("100", ".منع_الخروج تشغيل", { threadID: "G9" });
     o = await leaveEv("200", "200"); ok(addCalls.includes("200") && /تمت إعادته/.test(tx(o)), "منع الخروج يعيد من خرج بنفسه");
     o = await leaveEv("100", "200"); ok(addCalls.length === 1, "منع الخروج لا يعيد من طُرد");
+    { const keep = api.addUserToGroup; api.addUserToGroup = (u, t, cb) => { cb && cb(); }; o = await leaveEv("700", "700"); api.addUserToGroup = keep; ok(!/تمت إعادته/.test(tx(o)) && /لم أنجح/.test(tx(o)), "لا يدّعي الإعادة إذا لم يظهر العضو فعلًا"); }
     await msg("100", ".توديع ايقاف", { threadID: "G9" }); await msg("100", ".منع_الخروج ايقاف", { threadID: "G9" });
     o = await leaveEv("200", "200"); ok(o.length === 0, "توديع موقوف يصمت");
     // ---- الأمان: طابور بإيقاع ----
